@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<title>IP8</title>
+		<script type="text/javascript">
+			function Navigate(){ window.location='/' + document.getElementById('text-data').value;}
+		</script>
+<style>
+/* Border styles */
+#table-1 {
+	border-bottom-width: 3px;
+	border-bottom-style: solid;
+	border-bottom-color: rgb(235, 242, 224);
+}
+
+/* Padding and font style */
+#table-1 td, #table-1 th {
+	padding: 5px 10px;
+	font-size: 16px;
+	font-family: Verdana;
+	color: #5B5B5B;
+}
+
+/* Alternating background colors */
+#table-1 tr:nth-child(odd) {
+	background:  #C4E1FF
+}
+#table-1 tr:nth-child(even) {
+	background:  #F2E6E6
+}
+</style>
+
+	</head>
+	<body>
+		<form onsubmit="return false">
+			<input type="text" id="text-data" onkeydown="if(event.keyCode==13) Navigate();">
+			<button type="button" onclick="Navigate()">Enter</button>
+		</form>
+		<br>
+		<table id="table-1">
+			<tr><td>IP</td><td>{{ data.IP }}</td></tr>
+			<tr><td>ASN</td><td>{{ data.ASN }}</td></tr>
+			<tr><td>ISP</td><td>{{ data.ISP }}</td></tr>
+			<tr><td>City</td><td>{{ data.City }}</td></tr>
+			<tr><td>Country/Region</td><td>{{ data.Country }}</td></tr>
+		</table>
+
+	</body>
+	<pre style="color:grey;position:absolute;bottom:-10px">
+This product includes GeoLite data created by MaxMind, available from <a href="http://www.maxmind.com">http://www.maxmind.com</a><pre>
+</html>
