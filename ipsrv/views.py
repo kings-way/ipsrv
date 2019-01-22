@@ -6,6 +6,7 @@ import time
 import types
 import socket
 import requests
+import geoip2.database
 from ipsrv import app
 from flask import request
 from flask import jsonify
@@ -15,6 +16,10 @@ import xml.etree.cElementTree as ET
 
 
 bing_wallpaper_url = [0, [], [], []]
+
+CITY_reader = geoip2.database.Reader('/var/lib/GeoIP/GeoLite2-City.mmdb')
+ASN_reader = geoip2.database.Reader('/var/lib/GeoIP/GeoLite2-ASN.mmdb')
+
 def get_wallpaper_url():
 	global bing_wallpaper_url
 	now_time = int(time.time())
@@ -34,7 +39,7 @@ def get_wallpaper_url():
 	return bing_wallpaper_url[(now_time%3)+1]
 
 
-def run_cmd(cmd, shell=False):
+def run_cmd_geoip_legacy(cmd, shell=False):
 	# if cmd is a String, then we convert it into a list
 	if isinstance(cmd, types.StringType) and shell == False:
 		cmd = cmd.split()
@@ -52,16 +57,16 @@ def run_cmd(cmd, shell=False):
 	return returncode, out.strip()
 
 
-def run_addr(hostname, ipv6=False):
+def run_addr_legacy(hostname, ipv6=False):
 	if not is_secure(hostname):
 		return dict(IP="Hostname Error", ISP=None, ASN=None, City=None, Country=None)
-	if ipv6 or ':' in hostname:
+	if ipv6 or hostname.count(':') > 1:
 		ipv6 = True
 		cmd = ['geoiplookup6', hostname]
 	else:
 		cmd = ['geoiplookup', hostname]
 
-	ret,out = run_cmd(cmd, shell=False)
+	ret,out = run_cmd_geoip_legacy(cmd, shell=False)
 
 	# for geoiplookup, if it fails, the return value is still 0.
 	# And '--' does not end the options
@@ -85,6 +90,8 @@ def run_addr(hostname, ipv6=False):
 			# else, the hostname is ip address, and we do nothing
 			if IP != hostname:
 				IP = hostname + ' ( ' + IP + ' )'
+			else:
+				pass
 		except socket.gaierror,e:
 			IP = hostname
 		try:
@@ -100,6 +107,55 @@ def run_addr(hostname, ipv6=False):
 
 		return dict(IP=IP, ISP=ISP, ASN=ASN, City=City, Country=Country)
 
+def run_addr_geoip2(hostname, ipv6=False):
+	# if there is more than 2 ':' in hostname, then this may be a valid ipv6 address already	
+	if hostname.count(':') >1:
+		ipv6 = True
+	else:
+		try:
+			IP = socket.getaddrinfo(hostname, None, socket.AF_INET)[0][4][0]
+		except socket.gaierror, e:
+			try:
+				IP = socket.getaddrinfo(hostname, None, socket.AF_INET6)[0][4][0]
+			except socket.gaierror, e:
+				return dict(IP=hostname + " (Can't resolve hostname)", ISP='', ASN='', City='', Country='')
+	try:
+		ASN = ASN_reader.asn(IP)
+		ISP = ASN.autonomous_system_organization
+		ASN = 'AS' + str(ASN.autonomous_system_number)
+		ISP = 'ChinaNET' if ISP =='No.31,Jin-rong Street' else ISP
+	except geoip2.errors.AddressNotFoundError,e:
+		ASN = ISP = 'not found'
+
+	try:
+		City = CITY_reader.city(IP)
+		Location = '' if City.location.latitude is None else "%s, %s" % (City.location.latitude, City.location.longitude)
+		Country = '' if City.country.iso_code is None else "%s | %s | %s" % \
+					(City.country.iso_code, City.country.names['en'], City.country.names['zh-CN'])
+
+		# City.city.names ==> City Name
+		# City.subdivisions.most_specific.names ==> Provice Name
+		if City.city.name is not None:
+			city_name_en = City.city.names['en'] + ', ' + City.subdivisions.most_specific.names['en']
+			city_name_zh = City.city.names['zh-CN'] + ', ' + City.subdivisions.most_specific.names['zh-CN']
+		elif City.subdivisions.most_specific.name is not None:
+			city_name_en = City.subdivisions.most_specific.names['en']
+			city_name_zh = City.subdivisions.most_specific.names['zh-CN']
+		else:
+			city_name_en = None
+			city_name_zh = None
+
+		if city_name_en is None:
+			City = ''
+		else:
+			City = "%s | %s" % (city_name_en, city_name_zh)
+
+	except geoip2.errors.AddressNotFoundError,e:
+		Location = City = Country = 'not found'
+
+	IP = IP if IP == hostname else hostname + ' (' + IP + ') '
+
+	return dict(IP=IP , ISP=ISP, ASN=ASN, City=City, Country=Country, Location=Location)
 
 # Do some security check work, like check the ip format
 def is_secure(string):
@@ -107,14 +163,14 @@ def is_secure(string):
 
 def run(hostname, ua):
 	ua = str(ua).lower()
-	data = run_addr(hostname)
-	# if the hostname resolv failed, we try resolv AAAA records by geoiplookup6
-	if "Can't resolve hostname" in data['IP']:
-		data = run_addr(hostname, ipv6=True)
-
+#	data = run_addr_legacy(hostname)
+#	# if the hostname resolv failed, we try resolv AAAA records by geoiplookup6
+#	if "Can't resolve hostname" in data['IP']:
+#		data = run_addr_legacy(hostname, ipv6=True)
+	data = run_addr_geoip2(hostname)
 	if 'curl' in ua or 'wget' in ua:
-		return 'IP:\t%s\nASN:\t%s\nISP:\t%s\nCity:\t%s' %\
-				(data['IP'], data['ASN'], data['ISP'], data['City'])
+		return 'IP:      %s\nASN:     %s\nISP:     %s\nCity:    %s\nCountry: %s' %\
+				(data['IP'], data['ASN'], data['ISP'], data['City'], data['Country'])
 	else:
 		return render_template('index.html', data=data, wallpaper=get_wallpaper_url())
 
