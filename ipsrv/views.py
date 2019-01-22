@@ -135,15 +135,17 @@ def run_addr_geoip2(hostname, ipv6=False):
 
 		# City.city.names ==> City Name
 		# City.subdivisions.most_specific.names ==> Provice Name
-		if City.city.name is not None:
-			city_name_en = City.city.names['en'] + ', ' + City.subdivisions.most_specific.names['en']
-			city_name_zh = City.city.names['zh-CN'] + ', ' + City.subdivisions.most_specific.names['zh-CN']
-		elif City.subdivisions.most_specific.name is not None:
-			city_name_en = City.subdivisions.most_specific.names['en']
-			city_name_zh = City.subdivisions.most_specific.names['zh-CN']
-		else:
-			city_name_en = None
-			city_name_zh = None
+		city_name_en = None
+		city_name_zh = None
+		if City.city.name is not None :
+			city_name_en = City.city.names['en']
+			if City.city.names.has_key('zh-CN'):
+				city_name_zh = City.city.names['zh-CN']
+
+		if City.subdivisions.most_specific.name is not None:
+			city_name_en += ', ' + City.subdivisions.most_specific.names['en']
+			if City.subdivisions.most_specific.names.has_key('zh-CN'):
+				city_name_zh += ', ' + City.subdivisions.most_specific.names['zh-CN']
 
 		if city_name_en is None:
 			City = ''
