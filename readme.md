@@ -1,5 +1,12 @@
 # How to run
+--
+### Prerequisites
+Install GeoIP database update tool and download the database.
 
+	apt install geoipupdate
+	geoipupdate -v
+
+--
 ### 1. **run directly with python**
 
 	python runserver.py
