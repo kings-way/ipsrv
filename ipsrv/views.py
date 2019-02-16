@@ -8,6 +8,8 @@ import socket
 import requests
 import geoip2.database
 from ipsrv import app
+from ipsrv.conf.conf import *
+
 from flask import request
 from flask import jsonify
 from flask import render_template
@@ -39,73 +41,32 @@ def get_wallpaper_url():
 	return bing_wallpaper_url[(now_time%3)+1]
 
 
-def run_cmd_geoip_legacy(cmd, shell=False):
-	# if cmd is a String, then we convert it into a list
-	if isinstance(cmd, types.StringType) and shell == False:
-		cmd = cmd.split()
-	try:
-		p = Popen(cmd, stderr=PIPE, stdout=PIPE, shell=shell)
-		out, err = p.communicate()
-		returncode = p.returncode
-		if err:
-			# sys.stderr.write('Error when running cmd:' + str(cmd) + '\n' + err)
-			out = err + out + '\t' + str(cmd)
-		p.wait()
-	except OSError, e:
-		returncode = -1
-		out = str(e) + '\t' + str(cmd)
-	return returncode, out.strip()
+def get_longitude_latitude(ip):
+	amap_api_url = 'https://restapi.amap.com/v4/ip?key={}&ip={}'
+	response = requests.get(amap_api_url.format(API_KEY_AMAP, ip))
+	if not response.ok:
+		return -1, "AMAP API '/ip' HTTP CODE ERROR: " + str(response.status_code);
+	data = response.json()
+	if data['errcode'] !=0 :
+		return -1, "AMAP API '/ip' ERROR: " + data['errmsg']
+	return 0, (data['data']['lat'], data['data']['lng'], data['data']['confidence'])
 
+def get_high_precision_location(ip):
+	ret = get_longitude_latitude(ip)
+	if ret[0] == -1:
+		return ret
+	amap_location_api_url = 'https://ditu.amap.com/service/regeo?latitude={}&longitude={}'
+	response = requests.get(amap_location_api_url.format(ret[1][0], ret[1][1]))
+	if not response.ok:
+		return -1, "AMAP API '/regeo' HTTP CODE ERROR: " + str(response.status_code)
+	data = response.json()['data']
+	if data['result'] != 'true':
+		return -1, "AMAP API '/regeo' ERROR: " + data['message']
 
-def run_addr_legacy(hostname, ipv6=False):
-	if not is_secure(hostname):
-		return dict(IP="Hostname Error", ISP=None, ASN=None, City=None, Country=None)
-	if ipv6 or hostname.count(':') > 1:
-		ipv6 = True
-		cmd = ['geoiplookup6', hostname]
-	else:
-		cmd = ['geoiplookup', hostname]
+	return 0, dict(city=data['desc'], position=data['pos'],
+				latitude=ret[1][0], longitude=ret[1][1],
+				confidence=ret[1][2])
 
-	ret,out = run_cmd_geoip_legacy(cmd, shell=False)
-
-	# for geoiplookup, if it fails, the return value is still 0.
-	# And '--' does not end the options
-	if ret == -1:
-		return dict(IP="Error", ISP=None, ASN=None, City=None, Country=None)
-	elif "can't resolve hostname" in out:
-		return dict(IP=hostname + " (Can't resolve hostname)", ISP=None, ASN=None, City=None, Country=None)
-	else:
-		# socket.gethostbyname does not support a timeout option.
-		# we just assume that geoiplookup has already resolved the hostname,
-		# thus socket.gethostbyname won't be a problem
-		try:
-			# socket.gethostbyname does not resolve AAAA records
-			# IP = str(socket.gethostbyname(hostname))
-			if ipv6:
-				IP = socket.getaddrinfo(hostname, None, socket.AF_INET6)[0][4][0]
-			else:
-				IP = socket.getaddrinfo(hostname, None, socket.AF_INET)[0][4][0]
-
-			# if IP != hostname, then the hostname is real domain name
-			# else, the hostname is ip address, and we do nothing
-			if IP != hostname:
-				IP = hostname + ' ( ' + IP + ' )'
-			else:
-				pass
-		except socket.gaierror,e:
-			IP = hostname
-		try:
-			ASN = re.search(r'GeoIP ASNum.*: (AS\d+)\s+(.*)', out).group(1)
-			ISP = re.search(r'GeoIP ASNum.*: (AS\d+)\s+(.*)', out).group(2)
-			ISP = 'ChinaNET' if ISP =='No.31,Jin-rong Street' else ISP
-		except AttributeError,e:
-			ASN = ISP = 'not found'
-
-		#City = ''.join(re.findall(r'GeoIP City.*:\s+(.*)', out))
-		City = ','.join(''.join(re.findall(r'GeoIP City.*:\s+(.*)', out)).split(',')[2:4]).strip()
-		Country = ''.join(re.findall(r'GeoIP Country.*: (.*)', out))
-
-		return dict(IP=IP, ISP=ISP, ASN=ASN, City=City, Country=Country)
 
 def run_addr_geoip2(hostname, ipv6=False):
 	# if there is more than 2 ':' in hostname, then this may be a valid ipv6 address already	
@@ -152,9 +113,13 @@ def run_addr_geoip2(hostname, ipv6=False):
 	except geoip2.errors.AddressNotFoundError,e:
 		Location = City = Country = 'not found'
 
-	IP = IP if IP == hostname else hostname + ' (' + IP + ') '
+	# High Precision Location
+	ret, high_precision_location = get_high_precision_location(IP)
+	if ret == -1:
+		high_precision_location = dict(city='', position='', latitude=0, longitude=0, confidence=2333)
 
-	return dict(IP=IP , ISP=ISP, ASN=ASN, City=City, Country=Country, Location=Location)
+	IP = IP if IP == hostname else hostname + ' (' + IP + ')'
+	return dict(IP=IP , ISP=ISP, ASN=ASN, City=City, Country=Country, Location=Location, High=high_precision_location)
 
 # Do some security check work, like check the ip format
 def is_secure(string):

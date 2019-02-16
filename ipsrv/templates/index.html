@@ -7,6 +7,8 @@
 /* Border styles */
 #table-1 {
 	margin:0 auto;
+	margin-bottom: 15px;
+
 }
 
 /* Padding and font style */
@@ -18,7 +20,7 @@
 }
 
 #table-1 td:nth-child(odd) {
-	width:100px;
+	width:110px;
 }
 #table-1 td:nth-child(even) {
 	width:500px;
@@ -28,6 +30,36 @@
 	background:  #7B7B7B;
 }
 #table-1 tr:nth-child(even) {
+	background:  #ADADAD;
+}
+
+
+/* Border styles */
+#table-2 {
+	margin:0 auto;
+	margin-top: 15px;
+
+}
+
+/* Padding and font style */
+#table-2 td, #table-2 th {
+	padding: 5px 10px;
+	font-size: 16px;
+	font-family: Verdana;
+	color: #FCFCFC;
+}
+
+#table-2 td:nth-child(odd) {
+	width:110px;
+}
+#table-2 td:nth-child(even) {
+	width:500px;
+}
+/* Alternating background colors */
+#table-2 tr:nth-child(odd) {
+	background:  #7B7B7B;
+}
+#table-2 tr:nth-child(even) {
 	background:  #ADADAD;
 }
 
@@ -42,6 +74,13 @@ body {
 	height:100%;
 }
 
+hr.style-five {
+	width:350px;
+    border: 0;
+    height: 2px;
+    background: grey;
+    box-shadow: 0 0 10px 1px darkgray;
+}
 </style>
 
 	</head>
@@ -57,8 +96,16 @@ body {
 			<tr><td>ASN</td><td>{{ data.ASN }}</td></tr>
 			<tr><td>ISP</td><td>{{ data.ISP }}</td></tr>
 			<tr><td>City</td><td>{{ data.City }}</td></tr>
-			<tr><td>Country/Region</td><td>{{ data.Country }}</td></tr>
-			<tr><td>Location</td><td>{{ data.Location }}</td></tr>
+			<tr><td>Country</td><td>{{ data.Country }}</td></tr>
+			<tr><td>GeoIP Loc</td><td>{{ data.Location }}</td></tr>
+		</table>
+		<hr class="style-five";>
+		<table id="table-2">
+			<tr><td>高精度 IP 地区</td><td>{{ data.High.city }}</td></tr>
+			<tr><td>高精度 IP 位置</td><td>{{ data.High.position  }}</td></tr>
+			<tr><td>高精度 IP 坐标</td><td>
+					{{ "" if data.High.confidence == 2333 else "%.4f,%.4f (可信度: %.2f)" % (data.High.latitude,data.High.longitude,data.High.confidence) }}
+					</td></tr>
 		</table>
 		</div>
 
