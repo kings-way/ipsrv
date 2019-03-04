@@ -122,6 +122,6 @@ This product includes GeoLite data created by MaxMind, available from <a href="h
 <script src="static/webrtc_ip.js"></script>
 <script type="text/javascript">
 	function Navigate(){ window.location='/' + document.getElementById('text-data').value;}
-	getIPs(function(ip){document.getElementById('localv4').innerHTML=ip;});
+	Set_Local_IP(document.getElementById('localv4'), document.getElementById('localv6'));
 </script>
 </html>
