@@ -17,28 +17,31 @@ from subprocess import Popen,PIPE
 import xml.etree.cElementTree as ET
 
 
-bing_wallpaper_url = [0, [], [], []]
+updated_time = 0
+bing_wallpaper_url = [None, None, None]
+CITY_reader = None
+ASN_reader = None
 
-CITY_reader = geoip2.database.Reader('/var/lib/GeoIP/GeoLite2-City.mmdb')
-ASN_reader = geoip2.database.Reader('/var/lib/GeoIP/GeoLite2-ASN.mmdb')
+def update_global_var(now_time):
+	global updated_time
+	if (now_time -  updated_time) > 7200:
+		updated_time = now_time
 
-def get_wallpaper_url():
-	global bing_wallpaper_url
-	now_time = int(time.time())
-	# if the more than 24 hours, we refresh it.
-	if (now_time - bing_wallpaper_url[0]) < 7200:
-		pass
-	else:
+		# Update Geoip Reader
+		global CITY_reader
+		global ASN_reader
+		global bing_wallpaper_url
+		CITY_reader = geoip2.database.Reader('/var/lib/GeoIP/GeoLite2-City.mmdb')
+		ASN_reader = geoip2.database.Reader('/var/lib/GeoIP/GeoLite2-ASN.mmdb')
+
+		# Update Bing Wallpaper
 		bing_url = "http://cn.bing.com/HPImageArchive.aspx?idx=0&n=3"
 		response = requests.get(bing_url)
 		if not response.ok:
 			return
 		tree = ET.fromstring(response.text.encode('utf8'))
-		bing_wallpaper_url[0] = int(time.time())
 		for i in range(0,3):
-			bing_wallpaper_url[i+1] = ['http://cn.bing.com' + tree[i][4].text + '_1920x1080.jpg', tree[i][5].text]
-
-	return bing_wallpaper_url[(now_time%3)+1]
+			bing_wallpaper_url[i] = ['http://cn.bing.com' + tree[i][4].text + '_1920x1080.jpg', tree[i][5].text]
 
 
 def get_longitude_latitude(ip):
@@ -134,16 +137,18 @@ def is_secure(string):
 
 def run(hostname, ua):
 	ua = str(ua).lower()
+	now_time = int(time.time())
 #	data = run_addr_legacy(hostname)
 #	# if the hostname resolv failed, we try resolv AAAA records by geoiplookup6
 #	if "Can't resolve hostname" in data['IP']:
 #		data = run_addr_legacy(hostname, ipv6=True)
+	update_global_var(now_time)
 	data = run_addr_geoip2(hostname)
 	if 'curl' in ua or 'wget' in ua:
 		return 'IP:      %s\nASN:     %s\nISP:     %s\nCity:    %s\nCountry: %s' %\
 				(data['IP'], data['ASN'], data['ISP'], data['City'], data['Country'])
 	else:
-		return render_template('index.html', data=data, wallpaper=get_wallpaper_url())
+		return render_template('index.html', data=data, wallpaper=bing_wallpaper_url[now_time % 3])
 
 @app.route('/', methods=['GET'])
 def index():
