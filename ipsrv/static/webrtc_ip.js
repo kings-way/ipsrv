@@ -1,4 +1,4 @@
-function getIPs(callback){
+function Set_Local_IP(Element_v4, Element_v6){
     var ip_dups = {};
 
     //compatibility for firefox and chrome
@@ -32,14 +32,19 @@ function getIPs(callback){
     var pc = new RTCPeerConnection(servers, mediaConstraints);
 
     function handleCandidate(candidate){
-		console.log("==== La La La ====" + candidate)
         //match just the IP address
         var ip_regex = /([0-9]{1,3}(\.[0-9]{1,3}){3}|[a-f0-9]{1,4}(:[a-f0-9]{1,4}){7})/
         var ip_addr = ip_regex.exec(candidate)[1];
+		console.log("+++++++++ " + ip_addr)
 
         //remove duplicates
         if(ip_dups[ip_addr] === undefined)
-            callback(ip_addr);
+         {
+			if(ip_addr.indexOf(":") == -1)
+				Element_v4.innerHTML += " " + ip_addr;
+			else
+				Element_v6.innerHTML += " " + ip_addr;
+		 }
 
         ip_dups[ip_addr] = true;
     }
