@@ -145,7 +145,7 @@ def run(hostname, ua):
 #       data = run_addr_legacy(hostname, ipv6=True)
     update_global_var(now_time)
     data = run_addr_geoip2(hostname)
-    High_Preci_Loc_Str = "" if data['High']['confidence'] == 2333 else "%.4f,%.4f (可信度: %.2f)" % \
+    High_Preci_Loc_Str = "" if data['High']['confidence'] == 2333 else "%.4f, %.4f (可信度: %.2f)" % \
                                      (data['High']['latitude'],data['High']['longitude'],data['High']['confidence'])
 
     data['High_Preci_Loc_Str'] = High_Preci_Loc_Str.decode('utf8')
