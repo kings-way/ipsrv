@@ -108,9 +108,7 @@ hr.style-five {
 		<table id="table-2">
 			<tr><td>高精度 IP 地区</td><td>{{ data.High.city }}</td></tr>
 			<tr><td>高精度 IP 位置</td><td>{{ data.High.position  }}</td></tr>
-			<tr><td>高精度 IP 坐标</td><td>
-					{{ "" if data.High.confidence == 2333 else "%.4f,%.4f (可信度: %.2f)" % (data.High.latitude,data.High.longitude,data.High.confidence) }}
-					</td></tr>
+			<tr><td>高精度 IP 坐标</td><td>{{ data.High_Preci_Loc_Str }}</td></tr>
 		</table>
 		</div>
 
