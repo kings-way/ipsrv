@@ -36,13 +36,13 @@ def update_global_var(now_time):
         ASN_reader = geoip2.database.Reader('/var/lib/GeoIP/GeoLite2-ASN.mmdb')
 
         # Update Bing Wallpaper
-        bing_url = "http://cn.bing.com/HPImageArchive.aspx?idx=0&n=3"
+        bing_url = "https://cn.bing.com/HPImageArchive.aspx?idx=0&n=3"
         response = requests.get(bing_url)
         if not response.ok:
             return
         tree = ET.fromstring(response.text.encode('utf8'))
         for i in range(0,3):
-            bing_wallpaper_url[i] = ['http://cn.bing.com' + tree[i][4].text + '_1920x1080.jpg', tree[i][5].text]
+            bing_wallpaper_url[i] = ['http://cn.bing.com/' + tree[i][4].text + '_1920x1080.jpg', tree[i][5].text]
 
 
 def get_longitude_latitude(ip):
