@@ -73,29 +73,29 @@ def get_high_precision_location(ip):
 
 
 High_Precision_Failure  = dict(city='', position='', latitude=0, longitude=0, confidence=2333)
-Data_DNS_Resolv_Failure = dict(IP="XXXX (Can't resolve hostname)", ISP='', ASN='', City='',
-                                Country='', Location='', High=High_Precision_Failure )
 
 def run_addr_geoip2(hostname, ipv6=False):
     global High_Precision_Failure
-    global Data_DNS_Resolv_Failure
 
     # if there is more than 2 ':' in hostname, then this may be a valid ipv6 address already	
+    IP = None
     if hostname.count(':') >1:
         ipv6 = True
         IP = hostname
     else:
         try:
             IP = socket.getaddrinfo(hostname, None, socket.AF_INET)[0][4][0]
-        except socket.gaierror as e:
+        except socket.gaierror:
             try:
                 IP = socket.getaddrinfo(hostname, None, socket.AF_INET6)[0][4][0]
-            except (socket.gaierror, UnicodeError) as e:
-                Data_DNS_Resolv_Failure.update(dict(IP=hostname + " (Can't resolve hostname)"))
-                return Data_DNS_Resolv_Failure
-        except UnicodeError as e:
-            Data_DNS_Resolv_Failure.update(dict(IP=hostname + " (Can't resolve hostname)"))
-            return Data_DNS_Resolv_Failure
+            except Exception:
+                pass
+        except Exception:
+		pass
+
+        if IP is None:
+            return dict(IP=hostname + " (Can't resolve hostname)", ISP='', ASN='', City='',
+                        Country='', Location='', High=High_Precision_Failure )
     try:
         ASN = ASN_reader.asn(IP)
         ISP = ASN.autonomous_system_organization
