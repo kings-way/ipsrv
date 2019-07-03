@@ -32,10 +32,10 @@ function Set_Local_IP(Element_v4, Element_v6){
     var pc = new RTCPeerConnection(servers, mediaConstraints);
 
     function handleCandidate(candidate){
-        //match just the IP address
-        var ip_regex = /([0-9]{1,3}(\.[0-9]{1,3}){3}|[a-f0-9]{1,4}(:[a-f0-9]{1,4}){7})/
-        var ip_addr = ip_regex.exec(candidate)[1];
-		console.log("+++++++++ " + ip_addr)
+        // WebRTC M72 use mDNS address instead of IP address
+        // https://groups.google.com/forum/#!msg/discuss-webrtc/3h4y0fimHwg/j6G4dTVvCAAJ
+        var ip_addr = candidate.split(' ')[4];
+        console.log("candidate: " + candidate)
 
         //remove duplicates
         if(ip_dups[ip_addr] === undefined)
