@@ -72,27 +72,36 @@ def get_high_precision_location(ip):
                     confidence=ret[1][2])
 
 
+High_Precision_Failure  = dict(city='', position='', latitude=0, longitude=0, confidence=2333)
+Data_DNS_Resolv_Failure = dict(IP="XXXX (Can't resolve hostname)", ISP='', ASN='', City='',
+                                Country='', Location='', High=High_Precision_Failure )
+
 def run_addr_geoip2(hostname, ipv6=False):
-    high_precision_location_default = dict(city='', position='', latitude=0, longitude=0, confidence=2333)
+    global High_Precision_Failure
+    global Data_DNS_Resolv_Failure
 
     # if there is more than 2 ':' in hostname, then this may be a valid ipv6 address already	
     if hostname.count(':') >1:
         ipv6 = True
+        IP = hostname
     else:
         try:
             IP = socket.getaddrinfo(hostname, None, socket.AF_INET)[0][4][0]
-        except socket.gaierror, e:
+        except socket.gaierror as e:
             try:
                 IP = socket.getaddrinfo(hostname, None, socket.AF_INET6)[0][4][0]
-            except socket.gaierror, e:
-                return dict(IP=hostname + " (Can't resolve hostname)", ISP='', ASN='', City='', Country='',
-                       High=high_precision_location_default )
+            except (socket.gaierror, UnicodeError) as e:
+                Data_DNS_Resolv_Failure.update(dict(IP=hostname + " (Can't resolve hostname)"))
+                return Data_DNS_Resolv_Failure
+        except UnicodeError as e:
+            Data_DNS_Resolv_Failure.update(dict(IP=hostname + " (Can't resolve hostname)"))
+            return Data_DNS_Resolv_Failure
     try:
         ASN = ASN_reader.asn(IP)
         ISP = ASN.autonomous_system_organization
         ASN = 'AS' + str(ASN.autonomous_system_number)
         ISP = 'ChinaNET' if ISP =='No.31,Jin-rong Street' else ISP
-    except geoip2.errors.AddressNotFoundError,e:
+    except (geoip2.errors.AddressNotFoundError, ValueError) as e:
         ASN = ISP = 'not found'
 
     try:
@@ -117,16 +126,16 @@ def run_addr_geoip2(hostname, ipv6=False):
 
         City = "" if city_name_en is "" else "%s | %s" % (city_name_en.strip(', '), city_name_zh.strip(', '))
 
-    except geoip2.errors.AddressNotFoundError,e:
+    except (geoip2.errors.AddressNotFoundError, ValueError) as e:
         Location = City = Country = 'not found'
 
     # High Precision Location
     if not ipv6:
         ret, high_precision_location = get_high_precision_location(IP)
         if ret == -1:
-            high_precision_location = high_precision_location_default
+            high_precision_location = High_Precision_Failure
     else:
-        high_precision_location = high_precision_location_default
+        high_precision_location = High_Precision_Failure
 
 
     IP = IP if IP == hostname else hostname + ' (' + IP + ')'
