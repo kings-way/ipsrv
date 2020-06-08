@@ -185,7 +185,9 @@ IP 坐标: {}\n'.format(\
 
 @app.route('/', methods=['GET'])
 def index():
-    return run(request.remote_addr, request.user_agent)
+    headers_list = request.headers.getlist("X-Forwarded-For")
+    remote_addr = headers_list[0] if headers_list else request.remote_addr
+    return run(remote_addr, request.user_agent)
 
 @app.route('/<args>', methods=['GET'])
 # args can be DomainName, IP, IPv6, ASN
