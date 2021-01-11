@@ -5,63 +5,34 @@
 		<title>IP</title>
 <style>
 /* Border styles */
-#table-1 {
+.table {
 	margin:0 auto;
 	margin-bottom: 0px;
 
 }
 
 /* Padding and font style */
-#table-1 td, #table-1 th {
+.table td, .table th {
 	padding: 5px 10px;
 	font-size: 16px;
 	font-family: Verdana;
 	color: #FCFCFC;
 }
 
-#table-1 td:nth-child(odd) {
+.table td:nth-child(odd) {
 	width:110px;
 }
-#table-1 td:nth-child(even) {
+.table td:nth-child(even) {
 	width:500px;
 }
 /* Alternating background colors */
-#table-1 tr:nth-child(odd) {
+.table tr:nth-child(odd) {
 	background:  #7B7B7B;
 }
-#table-1 tr:nth-child(even) {
+.table tr:nth-child(even) {
 	background:  #ADADAD;
 }
 
-
-/* Border styles */
-#table-2 {
-	margin:0 auto;
-	margin-top: 0px;
-
-}
-
-/* Padding and font style */
-#table-2 td, #table-2 th {
-	padding: 5px 10px;
-	font-size: 16px;
-	font-family: Verdana;
-	color: #FCFCFC;
-}
-
-#table-2 td:nth-child(odd) {
-	width:110px;
-}
-#table-2 td:nth-child(even) {
-	width:500px;
-}
-/* Alternating background colors */
-#table-2 tr:nth-child(odd) {
-	background:  #7B7B7B;
-}
-#table-2 tr:nth-child(even) {
-	background:  #ADADAD;
-}
 
 body {
 	text-align:center;
@@ -97,7 +68,7 @@ hr.style-five {
 			<button type="button" onclick="Navigate()">Enter</button>
 		</form>
 		<br>
-		<table id="table-1">
+		<table class="table">
 			<tr><td>IP</td><td>{{ data.IP }}</td></tr>
 			<tr><td>ASN</td><td>{{ data.ASN }}</td></tr>
 			<tr><td>ISP</td><td>{{ data.ISP }}</td></tr>
@@ -106,12 +77,13 @@ hr.style-five {
 			<tr><td>GeoIP Loc</td><td>{{ data.Location }}</td></tr>
 		</table>
 		<hr class="style-five";>
-		<table id="table-1">
+		<table class="table">
+			<tr><td>DNS Resolver</td><td id="dns">Loading...</td></tr>
 			<tr><td>Local IP (v4)</td><td id="localv4"></td></tr>
 			<tr><td>Local IP (v6)</td><td id="localv6"></td></tr>
 		</table>
 		<hr class="style-five";>
-		<table id="table-2">
+		<table class="table">
 			<tr><td>高精度 IP 地区</td><td>{{ data.High.city }}</td></tr>
 			<tr><td>高精度 IP 位置</td><td>{{ data.High.position  }}</td></tr>
 			<tr><td>高精度 IP 坐标</td><td>{{ data.High_Preci_Loc_Str }}</td></tr>
@@ -126,6 +98,22 @@ This product includes GeoLite data created by MaxMind, available from <a href="h
 <script src="static/webrtc_ip.js"></script>
 <script type="text/javascript">
 	function Navigate(){ window.location='/' + document.getElementById('text-data').value;}
+	function loadDNS() {
+		var xhttp = new XMLHttpRequest();
+		xhttp.onreadystatechange = function() {
+			if (this.readyState == 4 && this.status == 200) {
+				data = JSON.parse(this.responseText);
+				document.getElementById("dns").innerHTML = "";
+				data.dnsServerInfoArray.forEach(function(value, index, array){
+					line = value.ipAddress;
+					document.getElementById("dns").innerHTML += "<a href=" + line.ipAddress+">"+line.ipAddress+"</a> ("+line.isp+")<br>"
+				})
+			}
+		};
+		xhttp.open("GET", "http://4." + Math.random() + ".dns.whatsmydnsserver.com/api", true);
+		xhttp.send();
+	}
 	Set_Local_IP(document.getElementById('localv4'), document.getElementById('localv6'));
+	loadDNS();
 </script>
 </html>
