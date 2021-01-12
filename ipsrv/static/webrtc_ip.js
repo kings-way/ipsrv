@@ -41,9 +41,9 @@ function Set_Local_IP(Element_v4, Element_v6){
         if(ip_dups[ip_addr] === undefined)
          {
 			if(ip_addr.indexOf(":") == -1)
-				Element_v4.innerHTML += " " + ip_addr;
+				Element_v4.innerHTML += " " + ip_addr + "<br>";
 			else
-				Element_v6.innerHTML += " " + ip_addr;
+				Element_v6.innerHTML += " " + ip_addr + "<br>";
 		 }
 
         ip_dups[ip_addr] = true;
