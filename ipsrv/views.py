@@ -23,6 +23,10 @@ bing_wallpaper_url = [None, None, None]
 CITY_reader = None
 ASN_reader = None
 
+reqs = requests.session()
+amap_api_url = 'https://restapi.amap.com/v4/ip?key={}&ip={}'
+amap_location_api_url = 'https://ditu.amap.com/service/regeo?latitude={}&longitude={}'
+
 def update_global_var(now_time):
     global updated_time
     if (now_time -  updated_time) > 7200:
@@ -37,35 +41,49 @@ def update_global_var(now_time):
 
         # Update Bing Wallpaper
         bing_url = "https://cn.bing.com/HPImageArchive.aspx?idx=0&n=3"
-        response = requests.get(bing_url)
-        if not response.ok:
+        resp = requests.get(bing_url)
+        if not resp.ok:
             return
-        tree = ET.fromstring(response.text.encode('utf8'))
+        tree = ET.fromstring(resp.text.encode('utf8'))
         for i in range(0,3):
             bing_wallpaper_url[i] = ['http://cn.bing.com/' + tree[i][4].text + '_1920x1080.jpg', tree[i][5].text]
 
 
 def get_longitude_latitude(ip):
-    amap_api_url = 'https://restapi.amap.com/v4/ip?key={}&ip={}'
-    response = requests.get(amap_api_url.format(API_KEY_AMAP, ip))
-    if not response.ok:
-        return -1, "AMAP API '/ip' HTTP CODE ERROR: " + str(response.status_code);
-    data = response.json()
+    global reqs
+    global amap_api_url
+    try:
+        resp = reqs.get(amap_api_url.format(API_KEY_AMAP, ip), timeout=3)
+    except requests.exceptions.Timeout as _:
+        return -1, "Upstream API1 request timeout"
+
+    if not resp.ok:
+        return -1, "Upstream API1 http status error: " + str(resp.status_code);
+
+    data = resp.json()
     if data['errcode'] !=0 :
-        return -1, "AMAP API '/ip' ERROR: " + data['errmsg']
+        return -1, "Upstream API1 returns error: " + data['errmsg']
+
     return 0, (data['data']['lat'], data['data']['lng'], data['data']['confidence'])
 
+
 def get_high_precision_location(ip):
+    global reqs
+    global amap_location_api_url
     ret = get_longitude_latitude(ip)
     if ret[0] == -1:
         return ret
-    amap_location_api_url = 'https://ditu.amap.com/service/regeo?latitude={}&longitude={}'
-    response = requests.get(amap_location_api_url.format(ret[1][0], ret[1][1]))
-    if not response.ok:
-        return -1, "AMAP API '/regeo' HTTP CODE ERROR: " + str(response.status_code)
-    data = response.json()['data']
+    try:
+        resp = reqs.get(amap_location_api_url.format(ret[1][0], ret[1][1]), timeout=3)
+    except requests.exceptions.Timeout as _:
+        return -1, "Upstream API2 request timeout"
+
+    if not resp.ok:
+        return -1, "Upstream API2 http status error: " + str(resp.status_code)
+
+    data = resp.json()['data']
     if data['result'] != 'true':
-        return -1, "AMAP API '/regeo' ERROR: " + data['message']
+        return -1, "Upstream API2 returns error: " + data['message']
 
     return 0, dict(city=data['desc'], position=data['pos'],
                     latitude=ret[1][0], longitude=ret[1][1],
@@ -130,12 +148,16 @@ def run_addr_geoip2(hostname, ipv6=False):
         Location = City = Country = 'not found'
 
     # High Precision Location
-    if not ipv6:
-        ret, high_precision_location = get_high_precision_location(IP)
-        if ret == -1:
-            high_precision_location = High_Precision_Failure
-    else:
+    ret, high_precision_location = get_high_precision_location(IP)
+    if ret == -1:
+        print(high_precision_location)
         high_precision_location = High_Precision_Failure
+#    if not ipv6:
+#        ret, high_precision_location = get_high_precision_location(IP)
+#        if ret == -1:
+#            high_precision_location = High_Precision_Failure
+#    else:
+#        high_precision_location = High_Precision_Failure
 
 
     IP = IP if IP == hostname else hostname + ' (' + IP + ')'
