@@ -24,7 +24,7 @@ CITY_reader = None
 ASN_reader = None
 
 reqs = requests.session()
-amap_api_url = 'https://restapi.amap.com/v4/ip?key={}&ip={}'
+amap_api_url = 'https://restapi.amap.com/v4/ip?key={}&ip={}'    # this API does not support keep-alive
 amap_location_api_url = 'https://ditu.amap.com/service/regeo?latitude={}&longitude={}'
 
 def update_global_var(now_time):
