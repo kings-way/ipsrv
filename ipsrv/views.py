@@ -197,7 +197,7 @@ def do_query_ip_hostname(hostname, ipv6=False):
             if 'zh-CN' in City.subdivisions.most_specific.names:
                 city_name_zh += ', ' + City.subdivisions.most_specific.names['zh-CN']
 
-        City = "" if city_name_en is "" else "%s | %s" % (city_name_en.strip(', '), city_name_zh.strip(', '))
+        City = "" if city_name_en == "" else "%s | %s" % (city_name_en.strip(', '), city_name_zh.strip(', '))
 
     except (geoip2.errors.AddressNotFoundError, ValueError) as e:
         # not found
