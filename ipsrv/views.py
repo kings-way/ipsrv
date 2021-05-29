@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 #encoding=utf8
 
 import re
@@ -11,6 +11,7 @@ import geoip2.database
 from ipsrv import app
 from ipsrv.conf.conf import *
 
+from flask import abort
 from flask import request
 from flask import jsonify
 from flask import render_template
@@ -58,11 +59,11 @@ def get_longitude_latitude(ip):
         return -1, "Upstream API1 request timeout"
 
     if not resp.ok:
-        return -1, "Upstream API1 http status error: " + str(resp.status_code);
+        return -1, "Upstream API1 http status error: %d " % resp.status_code
 
     data = resp.json()
     if data['errcode'] !=0 :
-        return -1, "Upstream API1 returns error: " + data['errmsg']
+        return -1, "Upstream API1 returns error: errcode: %d, errmsg: %s" % (data['errcode'], data['errmsg'])
 
     return 0, (data['data']['lat'], data['data']['lng'], data['data']['confidence'])
 
@@ -79,11 +80,11 @@ def get_high_precision_location(ip):
         return -1, "Upstream API2 request timeout"
 
     if not resp.ok:
-        return -1, "Upstream API2 http status error: " + str(resp.status_code)
+        return -1, "Upstream API2 http status error: %d " % resp.status_code
 
     data = resp.json()['data']
     if data['result'] != 'true':
-        return -1, "Upstream API2 returns error: " + data['message']
+        return -1, "Upstream API2 returns error: message: %s" % data['message']
 
     return 0, dict(city=data['desc'], position=data['pos'],
                     latitude=ret[1][0], longitude=ret[1][1],
@@ -95,7 +96,7 @@ High_Precision_Failure  = dict(city='', position='', latitude=0, longitude=0, co
 def run_addr_geoip2(hostname, ipv6=False):
     global High_Precision_Failure
 
-    # if there is more than 2 ':' in hostname, then this may be a valid ipv6 address already	
+    # if there is more than two ':' in hostname, then this may be a valid ipv6 address already
     IP = None
     if hostname.count(':') >1:
         ipv6 = True
@@ -109,7 +110,7 @@ def run_addr_geoip2(hostname, ipv6=False):
             except Exception:
                 pass
         except Exception:
-		pass
+                pass
 
         if IP is None:
             return dict(IP=hostname + " (Can't resolve hostname)", ISP='', ASN='', City='',
@@ -134,12 +135,12 @@ def run_addr_geoip2(hostname, ipv6=False):
         city_name_zh = ''
         if City.city.name is not None :
             city_name_en = City.city.names['en']
-            if City.city.names.has_key('zh-CN'):
+            if 'zh-CN' in City.city.names:
                 city_name_zh = City.city.names['zh-CN']
 
         if City.subdivisions.most_specific.name is not None:
             city_name_en += ', ' + City.subdivisions.most_specific.names['en']
-            if City.subdivisions.most_specific.names.has_key('zh-CN'):
+            if 'zh-CN' in City.subdivisions.most_specific.names:
                 city_name_zh += ', ' + City.subdivisions.most_specific.names['zh-CN']
 
         City = "" if city_name_en is "" else "%s | %s" % (city_name_en.strip(', '), city_name_zh.strip(', '))
@@ -178,8 +179,7 @@ def run(hostname, ua):
     data = run_addr_geoip2(hostname)
     High_Preci_Loc_Str = "" if data['High']['confidence'] == 2333 else "%.4f, %.4f (可信度: %.2f)" % \
                                      (data['High']['latitude'],data['High']['longitude'],data['High']['confidence'])
-
-    data['High_Preci_Loc_Str'] = High_Preci_Loc_Str.decode('utf8')
+    data['High_Preci_Loc_Str'] = High_Preci_Loc_Str
 
     if 'curl' in ua or 'wget' in ua:
         return '\
@@ -192,15 +192,15 @@ Geo Loc: {}\n\n\
 IP 地区: {}\n\
 IP 位置: {}\n\
 IP 坐标: {}\n'.format(\
-                    data['IP'].encode('utf8'),
-                    data['ASN'].encode('utf8'),
-                    data['ISP'].encode('utf8'),
-                    data['City'].encode('utf8'),
-                    data['Country'].encode('utf8'),
-                    data['Location'].encode('utf8'),
-                    data['High']['city'].encode('utf8'),
-                    data['High']['position'].encode('utf8'),
-                    data['High_Preci_Loc_Str'].encode('utf8')
+                    data['IP'],
+                    data['ASN'],
+                    data['ISP'],
+                    data['City'],
+                    data['Country'],
+                    data['Location'],
+                    data['High']['city'],
+                    data['High']['position'],
+                    data['High_Preci_Loc_Str']
                     )
     else:
         return render_template('index.html', data=data, wallpaper=bing_wallpaper_url[now_time % 3])
@@ -218,4 +218,6 @@ def index2(args):
     #if args is ASN:
     #	return run_asn(args,request.header)
     #else:
+    if args == 'favicon.ico':
+        abort(404)
     return run(args, request.user_agent)
