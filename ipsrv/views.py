@@ -286,25 +286,28 @@ def query_ip_hostname(hostname, ua):
     else:
         return render_template('index.html', data=data, wallpaper=bing_wallpaper_url[now_time % 3])
 
+
+
+@app.route('/favicon.ico')
+def favicon():
+    abort(404)
+
+# params can be DomainName, IP, IPv6, ASN
 @app.route('/', methods=['GET'])
-def index():
-    headers_list = request.headers.getlist("X-Forwarded-For")
-    remote_addr = headers_list[0].split(',')[0] if headers_list else request.remote_addr
-    return query_ip_hostname(remote_addr, request.user_agent)
-
-
-# args can be DomainName, IP, IPv6, ASN
 @app.route('/<args>', methods=['GET'])
-def route_ip_hostname(args):
+def route_ip_hostname(args=None):
     # TODO: Check ASN format, and find a way to query ASN info
     #if args is ASN:
     #else:
-    if args == 'favicon.ico':
-        abort(404)
-    return query_ip_hostname(args, request.user_agent)
+    if args is None:
+        headers_list = request.headers.getlist("X-Forwarded-For")
+        hostname = headers_list[0].split(',')[0] if headers_list else request.remote_addr
+    else:
+        hostname = args
+    return query_ip_hostname(hostname, request.user_agent)
 
 
-# args: /wifi/essid1,rssi1|essid2,rssi2|....
+# params: /wifi/essid1,rssi1|essid2,rssi2|....
 @app.route('/wifi/<args>', methods=['GET'])
 def route_wifi_location(args):
     essids = []
@@ -312,13 +315,13 @@ def route_wifi_location(args):
         if len(i.split(',')) == 2:
             essids.append(i + ',NoSSID')
         else:
-            abort(500)
+            abort(500, 'wrong params')
     if len(essids) > 1:
         return query_wifi_cell_location(essids, request.user_agent, is_wifi=True)
     else:
-        abort(500)
+        abort(500, 'wrong params')
 
-# args: /cell/mcc,mnc,lac,cellid,rssi|mcc,mnc,lac,cellid,rssi
+# params: /cell/mcc,mnc,lac,cellid,rssi|mcc,mnc,lac,cellid,rssi
 # the first is connected cell station, the others are nearby stations
 @app.route('/cell/<args>', methods=['GET'])
 def route_cell_location(args):
@@ -328,8 +331,8 @@ def route_cell_location(args):
         if len(i.split(',')) == 5:
             bts.append(i)
         else:
-            abort(500)
+            abort(500, 'wrong params')
     if len(bts) > 0:
         return query_wifi_cell_location(bts, request.user_agent, is_cell=True)
     else:
-        abort(500)
+        abort(500, 'wrong params')
