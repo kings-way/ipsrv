@@ -79,7 +79,7 @@ def get_wifi_cell_location(data, is_wifi, is_cell):
     try:
         resp = reqs.get(api, timeout=3)
     except requests.exceptions.Timeout as _:
-        return -1, "Upstream API request timeout, url: [%s]" % resp.url.split('?')[0]
+        return -1, "Upstream API request timeout, url: [%s]" % api.split('?')[0]
 
     if not resp.ok:
         return -1, "Upstream API http status error: %d, url: [%s] " % \
@@ -106,7 +106,7 @@ def get_longitude_latitude(ip):
     try:
         resp = reqs.get(amap_ip_loc_api.format(API_KEY_AMAP, ip), timeout=3)
     except requests.exceptions.Timeout as _:
-        return -1, "Upstream API request timeout, url: [%s]" % resp.url.split('?')[0]
+        return -1, "Upstream API request timeout, url: [%s]" % amap_ip_loc_api.split('?')[0]
 
     if not resp.ok:
         return -1, "Upstream API http status error: %d, url: [%s] " % \
@@ -129,7 +129,7 @@ def get_high_precision_location(ip):
     try:
         resp = reqs.get(amap_location_api.format(ret[1][0], ret[1][1]), timeout=3)
     except requests.exceptions.Timeout as _:
-        return -1, "Upstream API request timeout, url: [%s]" % resp.url.split('?')[0]
+        return -1, "Upstream API request timeout, url: [%s]" % amap_location_api.split('?')[0]
 
     if not resp.ok:
         return -1, "Upstream API http status error: %d, url: [%s] " % \
