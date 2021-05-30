@@ -19,12 +19,13 @@ from subprocess import Popen,PIPE
 import xml.etree.cElementTree as ET
 
 
-updated_time = 0
-bing_wallpaper_url = [None, None, None]
-CITY_reader = None
 ASN_reader = None
+CITY_reader = None
+bing_wallpaper_updated_time = 0
+bing_wallpaper_url = [None, None, None]
 
-reqs = requests.session()
+visitors = {}   # {"ip":(timestamp, count)}
+requests_session = requests.session()
 
 amap_ip_loc_api   = 'http://restapi.amap.com/v4/ip?key={}&ip={}'    # this API does not support keep-alive
 amap_location_api = 'http://ditu.amap.com/service/regeo?latitude={}&longitude={}'
@@ -41,9 +42,9 @@ amap_wifi_loc_api = 'http://apilocate.amap.com/position?accesstype=1&key={}&macs
 
 
 def update_global_var(now_time):
-    global updated_time
-    if (now_time -  updated_time) > 7200:
-        updated_time = now_time
+    global bing_wallpaper_updated_time
+    if (now_time -  bing_wallpaper_updated_time) > 7200:
+        bing_wallpaper_updated_time = now_time
 
         # Update Geoip Reader
         global CITY_reader
@@ -63,7 +64,7 @@ def update_global_var(now_time):
 
 
 def get_wifi_cell_location(data, is_wifi, is_cell):
-    global reqs
+    global requests_session
     global amap_wifi_loc_api
     global amap_cell_loc_api
 
@@ -77,7 +78,7 @@ def get_wifi_cell_location(data, is_wifi, is_cell):
     else:
         return -1, "no wifi and no cell, what's your problem?"
     try:
-        resp = reqs.get(api, timeout=3)
+        resp = requests_session.get(api, timeout=3)
     except requests.exceptions.Timeout as _:
         return -1, "Upstream API request timeout, url: [%s]" % api.split('?')[0]
 
@@ -101,10 +102,10 @@ def get_wifi_cell_location(data, is_wifi, is_cell):
                     radius    = result['radius'])
 
 def get_longitude_latitude(ip):
-    global reqs
+    global requests_session
     global amap_ip_loc_api
     try:
-        resp = reqs.get(amap_ip_loc_api.format(API_KEY_AMAP, ip), timeout=3)
+        resp = requests_session.get(amap_ip_loc_api.format(API_KEY_AMAP, ip), timeout=3)
     except requests.exceptions.Timeout as _:
         return -1, "Upstream API request timeout, url: [%s]" % amap_ip_loc_api.split('?')[0]
 
@@ -121,13 +122,13 @@ def get_longitude_latitude(ip):
 
 
 def get_high_precision_location(ip):
-    global reqs
+    global requests_session
     global amap_location_api
     ret = get_longitude_latitude(ip)
     if ret[0] == -1:
         return ret
     try:
-        resp = reqs.get(amap_location_api.format(ret[1][0], ret[1][1]), timeout=3)
+        resp = requests_session.get(amap_location_api.format(ret[1][0], ret[1][1]), timeout=3)
     except requests.exceptions.Timeout as _:
         return -1, "Upstream API request timeout, url: [%s]" % amap_location_api.split('?')[0]
 
@@ -280,18 +281,39 @@ def query_ip_hostname(hostname, ua):
         return render_template('index.html', data=data, wallpaper=bing_wallpaper_url[now_time % 3])
 
 
+def check_req_freq_ok(ip):
+    global visitors
+
+    now_time = int(time.time())
+    record = visitors.get(ip)
+
+    if record is not None:
+        last_time, count = record
+        # if more than 5 mins, return OK
+        if now_time - last_time > 300:
+            visitors[ip] = (now_time, 1)
+            return True
+
+        # if less than 5 mins, check request count
+        else:
+            visitors[ip] = (now_time, count+1)
+            if count < 20:
+                return True
+            else:
+                return False
+    else:
+        visitors[ip] = (now_time, 1)
+        return True
+
 
 @app.route('/favicon.ico')
 def favicon():
     abort(404)
 
-# params can be DomainName, IP, IPv6, ASN
+# params can be DomainName, IP, IPv6
 @app.route('/', methods=['GET'])
 @app.route('/<args>', methods=['GET'])
 def route_ip_hostname(args=None):
-    # TODO: Check ASN format, and find a way to query ASN info
-    #if args is ASN:
-    #else:
     if args is None:
         headers_list = request.headers.getlist("X-Forwarded-For")
         hostname = headers_list[0].split(',')[0] if headers_list else request.remote_addr
@@ -303,6 +325,10 @@ def route_ip_hostname(args=None):
 # params: /wifi/essid1,rssi1|essid2,rssi2|....
 @app.route('/wifi/<args>', methods=['GET'])
 def route_wifi_location(args):
+    # need to take care of Cloudflare Proxy-ed Request
+    if not check_req_freq_ok(request.remote_addr):
+        abort(429, "request too fast, ip: %s" % request.remote_addr)
+
     essids = []
     for i in args.split('|'):
         if len(i.split(',')) == 2:
@@ -318,8 +344,11 @@ def route_wifi_location(args):
 # the first is connected cell station, the others are nearby stations
 @app.route('/cell/<args>', methods=['GET'])
 def route_cell_location(args):
+    # need to take care of Cloudflare Proxy-ed Request
+    if not check_req_freq_ok(request.remote_addr):
+        abort(429, "request too fast, ip: %s" % request.remote_addr)
+
     bts = []
-    print(args)
     for i in args.split('|'):
         if len(i.split(',')) == 5:
             bts.append(i)

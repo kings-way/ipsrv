@@ -295,16 +295,18 @@ This product includes GeoLite data created by MaxMind, available from <a href="h
 		});
 
 		params = params.join('|')
-		console.log("Params: " + params)
 
 		var xhttp = new XMLHttpRequest();
 		xhttp.onreadystatechange = function() {
 			if (this.readyState == 4 && this.status == 200) {
 				lines = this.responseText.split("\n");
-				document.getElementById("cell_city").innerHTML = lines[0].split(":")[1].trim();;
-				document.getElementById("cell_location").innerHTML = lines[1].split(":")[1].trim();;
-				document.getElementById("cell_coordinates").innerHTML = lines[2].split(":")[1].trim();;
-				document.getElementById("cell_radius").innerHTML = lines[3].split(":")[1].trim();;
+				document.getElementById("cell_city").innerHTML = lines[0].split(":")[1].trim();
+				document.getElementById("cell_location").innerHTML = lines[1].split(":")[1].trim();
+				document.getElementById("cell_coordinates").innerHTML = lines[2].split(":")[1].trim();
+				document.getElementById("cell_radius").innerHTML = lines[3].split(":")[1].trim();
+			}
+			else{
+				document.getElementById("cell_city").innerHTML = this.responseText;
 			}
 		};
 		xhttp.open("GET", "/cell/" + params, true);
@@ -326,10 +328,13 @@ This product includes GeoLite data created by MaxMind, available from <a href="h
 		xhttp.onreadystatechange = function() {
 			if (this.readyState == 4 && this.status == 200) {
 				lines = this.responseText.split("\n");
-				document.getElementById("wifi_city").innerHTML = lines[0].split(":")[1].trim();;
-				document.getElementById("wifi_location").innerHTML = lines[1].split(":")[1].trim();;
-				document.getElementById("wifi_coordinates").innerHTML = lines[2].split(":")[1].trim();;
-				document.getElementById("wifi_radius").innerHTML = lines[3].split(":")[1].trim();;
+				document.getElementById("wifi_city").innerHTML = lines[0].split(":")[1].trim();
+				document.getElementById("wifi_location").innerHTML = lines[1].split(":")[1].trim();
+				document.getElementById("wifi_coordinates").innerHTML = lines[2].split(":")[1].trim();
+				document.getElementById("wifi_radius").innerHTML = lines[3].split(":")[1].trim();
+			}
+			else{
+				document.getElementById("wifi_city").innerHTML = this.responseText;
 			}
 		};
 		xhttp.open("GET", "/wifi/" + params, true);
