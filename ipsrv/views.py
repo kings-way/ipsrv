@@ -240,18 +240,11 @@ def query_wifi_cell_location(data, ua, is_wifi=False, is_cell=False):
         radius = data['radius'] + ' (m)'
         coordinates = data['latitude'] + ', ' + data['longitude']
 
-    if 'curl' in ua or 'wget' in ua:
-        return  'City:        {}\n'\
-                'Location:    {}\n'\
-                'Coordinates: {}\n'\
-                'Radius:      {}\n'\
-                .format(city, location, coordinates, radius)
-    else:
-        return  'City:        {}<br>'\
-                'Location:    {}<br>'\
-                'Coordinates: {}<br>'\
-                'Radius:      {}<br>'\
-                .format(city, location, coordinates, radius)
+    return  'City:        {}\n'\
+            'Location:    {}\n'\
+            'Coordinates: {}\n'\
+            'Radius:      {}\n'\
+            .format(city, location, coordinates, radius)
 
 
 def query_ip_hostname(hostname, ua):

@@ -44,12 +44,64 @@ body {
 	background-position-x: center;
 }
 
-.maindiv{
+.rootdiv {
 	margin:0 auto;
-	margin-top:100px;
+	margin-top:200px;
 	width:100%;
 	height:100%;
 }
+
+.maindiv {
+	float: center;
+}
+
+.buttons_div {
+	margin-top:100px;
+	float: left;
+}
+
+.tab_button {
+	margin-top: 30px;
+	width: 115px;
+	height: 80px;
+	color: white;
+	font-size: 20px;
+	text-align:center;
+	cursor: pointer;
+	border: none;
+	border-radius: 8px;
+	background-color: gray;
+}
+
+.tab_button_selected {
+	color: white;
+	border: none;
+	background-color:#008CBA;
+}
+
+.button_add {
+	width: 30px;
+	border: none;
+	color: white;
+	cursor: pointer;
+	display: inline-block;
+	background-color: #1aa3ff;
+}
+
+.button_del {
+	width: 5px;
+	width: 30px;
+	border: none;
+	color: white;
+	cursor: pointer;
+	display: inline-block;
+	background-color: #ff6666;
+}
+
+.button_disabled {
+	background-color: darkgray;
+}
+
 
 hr.style-five {
 	width:350px;
@@ -62,10 +114,35 @@ hr.style-five {
 
 	</head>
 	<body background={{ wallpaper[0] }}>
-		<div class='maindiv'>
+	<div class="rootdiv">
+		<!-- div for tab change button -->
+		<div class="buttons_div">
+			<div><button class="tab_button tab_button_selected"
+						 onclick="tab_button(this,'ip')">IP<br>Location
+				</button>
+			</div>
+			<div><button class="tab_button"
+						 onclick="tab_button(this, 'wifi')">WiFi<br>Location
+				</button>
+			</div>
+			<div><button class="tab_button"
+					     onclick="tab_button(this, 'cell')">Cell<br>Location
+				</button>
+			</div>
+		</div>
+
+
+		<!-- div for IP location -->
+		<div id="div_ip" class="maindiv">
+		<!--
 		<form onsubmit="return false">
-			<input type="text" id="text-data" onkeydown="if(event.keyCode==13) Navigate();">
+			<input type="text" id="text_data_ip" onkeydown="if(event.keyCode==13) Navigate();">
 			<button type="button" onclick="Navigate()">Enter</button>
+		</form>
+		-->
+		<form onsubmit="Navigate(); return false">
+			<input type="text" id="text_data_ip">
+			<input type="submit" value="Enter"/>
 		</form>
 		<br>
 		<table class="table">
@@ -90,6 +167,85 @@ hr.style-five {
 		</table>
 		</div>
 
+		<!--  div for WiFi location-->
+		<div id="div_wifi" class="maindiv" hidden>
+		<form onsubmit="wifi_location(); return false">
+			<div>
+				<div id="div_wifi_row">
+					<input type="text" name="text_essid" size="17" maxlength="17" required
+									     placeholder="essid (11:22:33:44:55:66)"
+									     pattern="([0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}"
+									     title="MAC address of WiFi/AP">
+					<input type="number" name="text_wifi_rssi" size="3" max="0" min="-200" placeholder="rssi"
+										 title="signal strength, like: -60 dBm">
+					<input type="button" class="button_add button_disabled" value="+"
+										 disabled onclick="wifi_add_row(this)">
+					<input type="button" class="button_del button_disabled" value="-"
+										 disabled onclick="wifi_del_row(this)">
+				</div>
+				<div id="div_wifi_row">
+					<input type="text" name="text_essid" size="17" maxlength="17" required
+									     placeholder="essid (11:22:33:44:55:66)"
+									     pattern="([0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}"
+									     title="MAC address of WiFi/AP">
+					<input type="number" name="text_wifi_rssi" size="3" max="0" min="-200" placeholder="rssi"
+									     title="signal strength, like: -60 dBm">
+					<input type="button" class="button_add" value="+" onclick="wifi_add_row(this)">
+					<input type="button" class="button_del button_disabled" value="-"
+										 disabled onclick="wifi_del_row(this)">
+				</div>
+			</div>
+			<br>
+			<input type="submit" value="Locate"/>
+		</form>
+		<br>
+		<hr class="style-five";>
+		<table class="table">
+			<tr><td>City</td><td id="wifi_city"></td></tr>
+			<tr><td>Location</td><td id="wifi_location"></td></tr>
+			<tr><td>Coordinates</td><td id="wifi_coordinates"></td></tr>
+			<tr><td>Radius</td><td id="wifi_radius"></td></tr>
+		</table>
+		</div>
+
+		<!--  div for Cell location-->
+		<div id="div_cell" class="maindiv" hidden>
+		<form onsubmit="cell_location(); return false">
+			<div>
+				<div id="div_cell_row">
+					<input type="text" name="text_mcc" size="5" maxlength="3"
+						   placeholder="MCC(460)" pattern="[0-9]{1,3}" title="Mobile Country Code">
+
+					<input type="text" name="text_mnc" size="5" maxlength="3"
+						   placeholder="MNC (00)" pattern="[0-9]{1,3}" title="Mobile Network Code">
+
+					<input type="text" name="text_lac" size="6" maxlength="8" required
+						   placeholder="LAC" pattern="[0-9]{1,8}" title="Location Area Code">
+
+					<input type="text" name="text_cid" size="8" maxlength="10" required
+						   placeholder="CID" pattern="[0-9]{1,10}" title="Cell ID (BTS)">
+
+					<input type="number" name="text_cell_rssi" size="3" max="0" min="-200" placeholder="rssi"
+									     title="signal strength, like: -90 dBm">
+					<input type="button" class="button_add" value="+" onclick="cell_add_row(this)">
+					<input type="button" class="button_del button_disabled" value="-"
+										 disabled onclick="cell_del_row(this)">
+				</div>
+			</div>
+			<br>
+			<input type="submit" value="Locate"/>
+		</form>
+		<br>
+		<hr class="style-five";>
+		<table class="table">
+			<tr><td>City</td><td id="cell_city"></td></tr>
+			<tr><td>Location</td><td id="cell_location"></td></tr>
+			<tr><td>Coordinates</td><td id="cell_coordinates"></td></tr>
+			<tr><td>Radius</td><td id="cell_radius"></td></tr>
+		</table>
+		</div>
+
+	</div>
 	</body>
 	<pre style="color:grey;position:absolute;bottom:0px; right:20px">{{ wallpaper[1] }}</pre>
 	<pre style="color:grey;position:absolute;bottom:0px; left:20px">
@@ -97,7 +253,132 @@ This product includes GeoLite data created by MaxMind, available from <a href="h
 
 <script src="static/webrtc_ip.js"></script>
 <script type="text/javascript">
-	function Navigate(){ window.location='/' + document.getElementById('text-data').value;}
+	function Navigate(){ window.location='/' + document.getElementById('text_data_ip').value;}
+
+	function tab_button(element, tab){
+		buttons = element.parentElement.parentElement.childNodes;
+		buttons[1].childNodes[0].classList = "tab_button";
+		buttons[3].childNodes[0].classList = "tab_button";
+		buttons[5].childNodes[0].classList = "tab_button";
+		element.classList = "tab_button tab_button_selected";
+
+		div_ip = document.getElementById("div_ip");
+		div_wifi = document.getElementById("div_wifi");
+		div_cell = document.getElementById("div_cell");
+		div_ip.hidden = true;
+		div_wifi.hidden = true;
+		div_cell.hidden = true;
+
+		switch(tab){
+			case "wifi": div_wifi.hidden = false; break;
+			case "cell": div_cell.hidden = false; break;
+			default: div_ip.hidden = false;
+		}
+	}
+
+	function cell_location(){
+		console.log("do cell location");
+		mccs = document.getElementsByName("text_mcc");
+		mncs = document.getElementsByName("text_mnc");
+		lacs = document.getElementsByName("text_lac");
+		cids = document.getElementsByName("text_cid");
+		rssis = document.getElementsByName("text_cell_rssi");
+
+		params = [];
+		mccs.forEach(function(element, index){
+			mcc = element.value == "" ? 460 : element.value;
+			mnc = mncs[index].value == "" ? 00 : mncs[index].value;
+			lac = lacs[index].value;
+			cid = cids[index].value;
+			rssi = rssis[index].value == "" ? -60 : rssis[index].value;
+			params.push(mcc+','+mnc+','+lac+','+cid+','+rssi)
+		});
+
+		params = params.join('|')
+		console.log("Params: " + params)
+
+		var xhttp = new XMLHttpRequest();
+		xhttp.onreadystatechange = function() {
+			if (this.readyState == 4 && this.status == 200) {
+				lines = this.responseText.split("\n");
+				document.getElementById("cell_city").innerHTML = lines[0].split(":")[1].trim();;
+				document.getElementById("cell_location").innerHTML = lines[1].split(":")[1].trim();;
+				document.getElementById("cell_coordinates").innerHTML = lines[2].split(":")[1].trim();;
+				document.getElementById("cell_radius").innerHTML = lines[3].split(":")[1].trim();;
+			}
+		};
+		xhttp.open("GET", "/cell/" + params, true);
+		xhttp.send();
+	}
+	function wifi_location(){
+		console.log("do wifi location");
+		essids = document.getElementsByName("text_essid");
+		rssis = document.getElementsByName("text_wifi_rssi");
+
+		params = [];
+		essids.forEach(function(element, index){
+			essid = element.value;
+			rssi = rssis[index].value == "" ? -60 : rssis[index].value;
+			params.push(essid + ',' + rssi)
+		});
+		params = params.join('|')
+		var xhttp = new XMLHttpRequest();
+		xhttp.onreadystatechange = function() {
+			if (this.readyState == 4 && this.status == 200) {
+				lines = this.responseText.split("\n");
+				document.getElementById("wifi_city").innerHTML = lines[0].split(":")[1].trim();;
+				document.getElementById("wifi_location").innerHTML = lines[1].split(":")[1].trim();;
+				document.getElementById("wifi_coordinates").innerHTML = lines[2].split(":")[1].trim();;
+				document.getElementById("wifi_radius").innerHTML = lines[3].split(":")[1].trim();;
+			}
+		};
+		xhttp.open("GET", "/wifi/" + params, true);
+		xhttp.send();
+
+	}
+	function wifi_add_row(element){
+		element.disabled = true;
+		element.classList = "button_add button_disabled"
+		node = document.getElementById('div_wifi_row');
+		node_cloned = node.cloneNode(true);
+		node_cloned.childNodes[1].value = '';
+		node_cloned.childNodes[3].value = '';
+		node_cloned.childNodes[5].disabled = false;
+		node_cloned.childNodes[5].classList = 'button_add';
+		node_cloned.childNodes[7].disabled = false;
+		node_cloned.childNodes[7].classList = 'button_del';
+		node.parentElement.appendChild(node_cloned);
+	}
+	function wifi_del_row(element){
+		if(element.parentElement.nextElementSibling == null){
+			element.parentElement.previousElementSibling.childNodes[5].disabled = false;
+			element.parentElement.previousElementSibling.childNodes[5].classList = "button_add";
+		}
+		element.parentElement.parentElement.removeChild(element.parentElement);
+	}
+	function cell_add_row(element){
+		element.disabled = true;
+		element.classList = "button_add button_disabled"
+		node = document.getElementById('div_cell_row');
+		node_cloned = node.cloneNode(true);
+		node_cloned.childNodes[1].value = '';
+		node_cloned.childNodes[3].value = '';
+		node_cloned.childNodes[5].value = '';
+		node_cloned.childNodes[7].value = '';
+		node_cloned.childNodes[11].disabled = false;
+		node_cloned.childNodes[11].classList = 'button_add';
+		node_cloned.childNodes[13].disabled = false;
+		node_cloned.childNodes[13].classList = 'button_del';
+		node.parentElement.appendChild(node_cloned);
+	}
+	function cell_del_row(element){
+		if(element.parentElement.nextElementSibling == null){
+			element.parentElement.previousElementSibling.childNodes[11].disabled = false;
+			element.parentElement.previousElementSibling.childNodes[11].classList = "button_add";
+		}
+		element.parentElement.parentElement.removeChild(element.parentElement);
+	}
+
 	function loadDNS() {
 		var xhttp = new XMLHttpRequest();
 		xhttp.onreadystatechange = function() {
