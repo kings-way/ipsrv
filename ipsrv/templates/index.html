@@ -113,7 +113,7 @@ hr.style-five {
 </style>
 
 	</head>
-	<body background={{ wallpaper[0] }}>
+	<body onload="ip_location_on_load()" background={{ wallpaper[0] }}>
 	<div class="rootdiv">
 		<!-- div for tab change button -->
 		<div class="buttons_div">
@@ -134,24 +134,18 @@ hr.style-five {
 
 		<!-- div for IP location -->
 		<div id="div_ip" class="maindiv">
-		<!--
-		<form onsubmit="return false">
-			<input type="text" id="text_data_ip" onkeydown="if(event.keyCode==13) Navigate();">
-			<button type="button" onclick="Navigate()">Enter</button>
-		</form>
-		-->
-		<form onsubmit="Navigate(); return false">
+		<form onsubmit="ip_location_on_click(); return false">
 			<input type="text" id="text_data_ip" title="IP address or Domain name" required>
 			<input type="submit" value="Enter"/>
 		</form>
 		<br>
 		<table class="table">
-			<tr><td>IP</td><td>{{ data.IP }}</td></tr>
-			<tr><td>ASN</td><td>{{ data.ASN }}</td></tr>
-			<tr><td>ISP</td><td>{{ data.ISP }}</td></tr>
-			<tr><td>City</td><td>{{ data.City }}</td></tr>
-			<tr><td>Country</td><td>{{ data.Country }}</td></tr>
-			<tr><td>GeoIP Loc</td><td>{{ data.Location }}</td></tr>
+			<tr><td>IP</td><td name="ip_info">Loading...</td></tr>
+			<tr><td>ASN</td><td name="ip_info"></td></tr>
+			<tr><td>ISP</td><td name="ip_info"></td></tr>
+			<tr><td>City</td><td name="ip_info"></td></tr>
+			<tr><td>Country</td><td name="ip_info"></td></tr>
+			<tr><td>GeoIP Loc</td><td name="ip_info"></td></tr>
 		</table>
 		<hr class="style-five";>
 		<table class="table">
@@ -161,9 +155,9 @@ hr.style-five {
 		</table>
 		<hr class="style-five";>
 		<table class="table">
-			<tr><td>高精度 IP 地区</td><td>{{ data.High.city }}</td></tr>
-			<tr><td>高精度 IP 位置</td><td>{{ data.High.position  }}</td></tr>
-			<tr><td>高精度 IP 坐标</td><td>{{ data.High_Preci_Loc_Str }}</td></tr>
+			<tr><td>高精度 IP 地区</td><td name="ip_info">Loading...</td></tr>
+			<tr><td>高精度 IP 位置</td><td name="ip_info"></td></tr>
+			<tr><td>高精度 IP 坐标</td><td name="ip_info"></td></tr>
 		</table>
 		</div>
 
@@ -264,6 +258,38 @@ This product includes GeoLite data created by MaxMind, available from <a href="h
 		}
 	}
 
+	function ip_location_on_click(){
+		ip_location(document.getElementById("text_data_ip").value);
+	}
+
+	function ip_location_on_load(){
+		ip_location(window.location.pathname.substr(1));
+	}
+
+	function ip_location(query_ip){
+		console.log("do ip location");
+		ip_info = document.getElementsByName("ip_info");
+
+		var xhttp = new XMLHttpRequest();
+		xhttp.onreadystatechange = function() {
+			if (this.readyState == 4 && this.status == 200) {
+				lines = this.responseText.split("\n");
+				info_index = 0;
+				lines.forEach(function(line, index){
+					if (line != ""){
+						ip_info[info_index++].innerHTML = line.substr(line.indexOf(':')+1).trim();
+					}
+				});
+			}
+			else{
+				ip_info[0].innerHTML = "request failed";
+				ip_info[6].innerHTML = "request failed";
+			}
+		};
+		query_ip = query_ip == "" ? "localhost" : query_ip;
+		xhttp.open("GET", "/ip/" + query_ip, true);
+		xhttp.send();
+	}
 	function cell_location(){
 		console.log("do cell location");
 		mccs = document.getElementsByName("text_mcc");

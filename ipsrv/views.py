@@ -145,7 +145,7 @@ def get_high_precision_location(ip):
                     confidence=ret[1][2])
 
 
-High_Precision_Failure  = dict(city='', position='', latitude=0, longitude=0, confidence=2333)
+High_Precision_Failure  = dict(city='-', position='-', latitude=0, longitude=0, confidence=2333)
 
 def do_query_ip_hostname(hostname, ipv6=False):
     global High_Precision_Failure
@@ -248,16 +248,15 @@ def query_wifi_cell_location(data, ua, is_wifi=False, is_cell=False):
             .format(city, location, coordinates, radius)
 
 
-def query_ip_hostname(hostname, ua):
-    ua = str(ua).lower()
+def query_ip_hostname(hostname, plaintext=True):
     now_time = int(time.time())
     update_global_var(now_time)
     data = do_query_ip_hostname(hostname)
-    High_Preci_Loc_Str = "" if data['High']['confidence'] == 2333 else "%.4f, %.4f (confidence: %.2f)" % \
+    High_Preci_Coordinates = "-" if data['High']['confidence'] == 2333 else "%.4f, %.4f (confidence: %.2f)" % \
                                      (data['High']['latitude'],data['High']['longitude'],data['High']['confidence'])
-    data['High_Preci_Loc_Str'] = High_Preci_Loc_Str
+    data['High_Preci_Coordinates'] = High_Preci_Coordinates
 
-    if 'curl' in ua or 'wget' in ua:
+    if plaintext:
         return  'IP:      {}\n'\
                 'ASN:     {}\n'\
                 'ISP:     {}\n'\
@@ -275,10 +274,10 @@ def query_ip_hostname(hostname, ua):
                     data['Location'],
                     data['High']['city'],
                     data['High']['position'],
-                    data['High_Preci_Loc_Str']
+                    data['High_Preci_Coordinates']
                     )
     else:
-        return render_template('index.html', data=data, wallpaper=bing_wallpaper_url[now_time % 3])
+        return render_template('index.html', wallpaper=bing_wallpaper_url[now_time % 3])
 
 
 def check_req_freq_ok(ip):
@@ -313,13 +312,17 @@ def favicon():
 # params can be DomainName, IP, IPv6
 @app.route('/', methods=['GET'])
 @app.route('/<args>', methods=['GET'])
+@app.route('/ip/<args>', methods=['GET'])
 def route_ip_hostname(args=None):
-    if args is None:
+    if args is None or args == 'localhost':
         headers_list = request.headers.getlist("X-Forwarded-For")
         hostname = headers_list[0].split(',')[0] if headers_list else request.remote_addr
     else:
         hostname = args
-    return query_ip_hostname(hostname, request.user_agent)
+
+    ua = str(request.user_agent).lower();
+    plaintext = 'curl' in ua or 'wget' in ua or request.path.startswith('/ip/');
+    return query_ip_hostname(hostname, plaintext)
 
 
 # params: /wifi/essid1,rssi1|essid2,rssi2|....
