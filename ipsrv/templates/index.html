@@ -281,7 +281,7 @@ This product includes GeoLite data created by MaxMind, available from <a href="h
 					}
 				});
 			}
-			else{
+			else if (this.readyState == 4){
 				ip_info[0].innerHTML = "request failed";
 				ip_info[6].innerHTML = "request failed";
 			}
