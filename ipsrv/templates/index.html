@@ -183,10 +183,10 @@ hr.style-five {
 		<br>
 		<hr class="style-five";>
 		<table class="table">
-			<tr><td>City</td><td id="wifi_city"></td></tr>
-			<tr><td>Location</td><td id="wifi_location"></td></tr>
-			<tr><td>Coordinates</td><td id="wifi_coordinates"></td></tr>
-			<tr><td>Radius</td><td id="wifi_radius"></td></tr>
+			<tr><td>City</td><td id="wifi_city" name="wifi_info"></td></tr>
+			<tr><td>Location</td><td id="wifi_location" name="wifi_info"></td></tr>
+			<tr><td>Coordinates</td><td id="wifi_coordinates" name="wifi_info"></td></tr>
+			<tr><td>Radius</td><td id="wifi_radius" name="wifi_info"></td></tr>
 		</table>
 		</div>
 
@@ -220,10 +220,10 @@ hr.style-five {
 		<br>
 		<hr class="style-five";>
 		<table class="table">
-			<tr><td>City</td><td id="cell_city"></td></tr>
-			<tr><td>Location</td><td id="cell_location"></td></tr>
-			<tr><td>Coordinates</td><td id="cell_coordinates"></td></tr>
-			<tr><td>Radius</td><td id="cell_radius"></td></tr>
+			<tr><td>City</td><td id="cell_city" name="cell_info"></td></tr>
+			<tr><td>Location</td><td id="cell_location" name="cell_info"></td></tr>
+			<tr><td>Coordinates</td><td id="cell_coordinates" name="cell_info"></td></tr>
+			<tr><td>Radius</td><td id="cell_radius" name="cell_info"></td></tr>
 		</table>
 		</div>
 
@@ -270,6 +270,13 @@ This product includes GeoLite data created by MaxMind, available from <a href="h
 		console.log("do ip location");
 		ip_info = document.getElementsByName("ip_info");
 
+		ip_info.forEach(function(element){
+			element.innerHTML = "";
+		});
+		ip_info[0].innerHTML = "Loading";
+		ip_info[6].innerHTML = "Loading";
+
+
 		var xhttp = new XMLHttpRequest();
 		xhttp.onreadystatechange = function() {
 			if (this.readyState == 4 && this.status == 200) {
@@ -297,6 +304,10 @@ This product includes GeoLite data created by MaxMind, available from <a href="h
 		lacs = document.getElementsByName("text_lac");
 		cids = document.getElementsByName("text_cid");
 		rssis = document.getElementsByName("text_cell_rssi");
+		document.getElementsByName("cell_info").forEach(function(element){
+			element.innerHTML = "";
+		});
+		document.getElementById("cell_city").innerHTML = "Loading";
 
 		params = [];
 		mccs.forEach(function(element, index){
@@ -319,7 +330,7 @@ This product includes GeoLite data created by MaxMind, available from <a href="h
 				document.getElementById("cell_coordinates").innerHTML = lines[2].split(":")[1].trim();
 				document.getElementById("cell_radius").innerHTML = lines[3].split(":")[1].trim();
 			}
-			else{
+			else if (this.readyState == 4){
 				document.getElementById("cell_city").innerHTML = this.responseText;
 			}
 		};
@@ -330,6 +341,10 @@ This product includes GeoLite data created by MaxMind, available from <a href="h
 		console.log("do wifi location");
 		essids = document.getElementsByName("text_essid");
 		rssis = document.getElementsByName("text_wifi_rssi");
+		document.getElementsByName("wifi_info").forEach(function(element){
+			element.innerHTML = "";
+		});
+		document.getElementById("wifi_city").innerHTML = "Loading";
 
 		params = [];
 		essids.forEach(function(element, index){
@@ -347,7 +362,7 @@ This product includes GeoLite data created by MaxMind, available from <a href="h
 				document.getElementById("wifi_coordinates").innerHTML = lines[2].split(":")[1].trim();
 				document.getElementById("wifi_radius").innerHTML = lines[3].split(":")[1].trim();
 			}
-			else{
+			else if (this.readyState == 4){
 				document.getElementById("wifi_city").innerHTML = this.responseText;
 			}
 		};
