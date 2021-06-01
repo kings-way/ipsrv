@@ -335,10 +335,12 @@ def route_wifi_location(args):
             essids.append(i + ',NoSSID')
         else:
             abort(500, 'wrong params')
-    if len(essids) > 1:
-        return query_wifi_cell_location(essids, request.user_agent, is_wifi=True)
-    else:
+    if len(essids) == 0:
         abort(500, 'wrong params')
+    elif len(essids) == 1:
+        essids.append("ff:ff:ff:ff:ff:ff,-60,NoSSID")
+
+    return query_wifi_cell_location(essids, request.user_agent, is_wifi=True)
 
 # params: /cell/mcc,mnc,lac,cellid,rssi|mcc,mnc,lac,cellid,rssi
 # the first is connected cell station, the others are nearby stations

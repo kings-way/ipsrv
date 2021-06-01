@@ -177,18 +177,6 @@ hr.style-five {
 									     pattern="([0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}"
 									     title="MAC address of WiFi/AP">
 					<input type="number" name="text_wifi_rssi" size="3" max="0" min="-200" placeholder="rssi"
-										 title="signal strength, like: -60 dBm">
-					<input type="button" class="button_add button_disabled" value="+"
-										 disabled onclick="wifi_add_row(this)">
-					<input type="button" class="button_del button_disabled" value="-"
-										 disabled onclick="wifi_del_row(this)">
-				</div>
-				<div id="div_wifi_row">
-					<input type="text" name="text_essid" size="17" maxlength="17" required
-									     placeholder="essid (11:22:33:44:55:66)"
-									     pattern="([0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}"
-									     title="MAC address of WiFi/AP">
-					<input type="number" name="text_wifi_rssi" size="3" max="0" min="-200" placeholder="rssi"
 									     title="signal strength, like: -60 dBm">
 					<input type="button" class="button_add" value="+" onclick="wifi_add_row(this)">
 					<input type="button" class="button_del button_disabled" value="-"
