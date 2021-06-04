@@ -252,7 +252,7 @@ def query_ip_hostname(hostname, plaintext=True):
     now_time = int(time.time())
     update_global_var(now_time)
     data = do_query_ip_hostname(hostname)
-    High_Preci_Coordinates = "-" if data['High']['confidence'] == 2333 else "%.4f, %.4f (confidence: %.2f)" % \
+    High_Preci_Coordinates = "-" if data['High']['confidence'] == 2333 else "%.6f, %.6f (confidence: %.2f)" % \
                                      (data['High']['latitude'],data['High']['longitude'],data['High']['confidence'])
     data['High_Preci_Coordinates'] = High_Preci_Coordinates
 
