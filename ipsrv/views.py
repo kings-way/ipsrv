@@ -81,6 +81,8 @@ def get_wifi_cell_location(data, is_wifi, is_cell):
         resp = requests_session.get(api, timeout=3)
     except requests.exceptions.Timeout as _:
         return -1, "Upstream API request timeout, url: [%s]" % api.split('?')[0]
+    except Exception as e:
+        return -1, "Upstream API request failed, url: [%s]\n[%s]" % (api.split('?')[0], str(e))
 
     if not resp.ok:
         return -1, "Upstream API http status error: %d, url: [%s] " % \
@@ -88,7 +90,7 @@ def get_wifi_cell_location(data, is_wifi, is_cell):
 
     data = resp.json()
     if data['status'] != '1' :
-        return -1, "Upstream API returns error: errcode: %d, errmsg: %s, url: %s" % \
+        return -1, "Upstream API result error: errcode: %d, errmsg: %s, url: %s" % \
                     (data['errcode'], data['errmsg'], resp.url.split('?')[0])
 
     if data['result']['type'] == '0':
@@ -108,6 +110,8 @@ def get_longitude_latitude(ip):
         resp = requests_session.get(amap_ip_loc_api.format(API_KEY_AMAP, ip), timeout=3)
     except requests.exceptions.Timeout as _:
         return -1, "Upstream API request timeout, url: [%s]" % amap_ip_loc_api.split('?')[0]
+    except Exception as e:
+        return -1, "Upstream API request failed, url: [%s]\n[%s]" % (amap_ip_loc_api.split('?')[0], str(e))
 
     if not resp.ok:
         return -1, "Upstream API http status error: %d, url: [%s] " % \
@@ -115,7 +119,7 @@ def get_longitude_latitude(ip):
 
     data = resp.json()
     if data['errcode'] != 0 :
-        return -1, "Upstream API returns error: errcode: %d, errmsg: %s, url: %s" % \
+        return -2, "Upstream API result error: errcode: %d, errmsg: %s, url: %s" % \
                     (data['errcode'], data['errmsg'], resp.url.split('?')[0])
 
     return 0, (data['data']['lat'], data['data']['lng'], data['data']['confidence'])
@@ -125,12 +129,14 @@ def get_high_precision_location(ip):
     global requests_session
     global amap_location_api
     ret = get_longitude_latitude(ip)
-    if ret[0] == -1:
+    if ret[0] == -1 or ret[0] == -2:
         return ret
     try:
         resp = requests_session.get(amap_location_api.format(ret[1][0], ret[1][1]), timeout=3)
     except requests.exceptions.Timeout as _:
         return -1, "Upstream API request timeout, url: [%s]" % amap_location_api.split('?')[0]
+    except Exception as e:
+        return -1, "Upstream API request failed, url: [%s]\n[%s]" % (amap_location_api.split('?')[0], str(e))
 
     if not resp.ok:
         return -1, "Upstream API http status error: %d, url: [%s] " % \
@@ -138,14 +144,15 @@ def get_high_precision_location(ip):
 
     data = resp.json()['data']
     if data['result'] != 'true':
-        return -1, "Upstream API returns error: message: %s, url: %s" % \
+        return -2, "Upstream API result error: message: %s, url: %s" % \
                     (data['message'], resp.url.split('?')[0])
     return 0, dict(city=data['desc'], position=data['pos'],
                     latitude=ret[1][0], longitude=ret[1][1],
                     confidence=ret[1][2])
 
 
-High_Precision_Failure  = dict(city='-', position='-', latitude=0, longitude=0, confidence=2333)
+High_Precision_Empty    = dict(city='-', position='-', latitude=0, longitude=0, confidence=2333)
+High_Precision_Failure  = dict(city='failed', position='failed', latitude=0, longitude=0, confidence=2333)
 
 def do_query_ip_hostname(hostname, ipv6=False):
     global High_Precision_Failure
@@ -209,6 +216,9 @@ def do_query_ip_hostname(hostname, ipv6=False):
     if ret == -1:
         print(high_precision_location)
         high_precision_location = High_Precision_Failure
+    elif ret == -2:
+        print(high_precision_location)
+        high_precision_location = High_Precision_Empty
 #    if not ipv6:
 #        ret, high_precision_location = get_high_precision_location(IP)
 #        if ret == -1:
@@ -248,15 +258,17 @@ def query_wifi_cell_location(data, ua, is_wifi=False, is_cell=False):
             .format(city, location, coordinates, radius)
 
 
-def query_ip_hostname(hostname, plaintext=True):
+def query_ip_hostname(hostname,  browser=False):
     now_time = int(time.time())
     update_global_var(now_time)
-    data = do_query_ip_hostname(hostname)
-    High_Preci_Coordinates = "-" if data['High']['confidence'] == 2333 else "%.6f, %.6f (confidence: %.2f)" % \
-                                     (data['High']['latitude'],data['High']['longitude'],data['High']['confidence'])
-    data['High_Preci_Coordinates'] = High_Preci_Coordinates
 
-    if plaintext:
+    if browser:
+        return render_template('index.html', wallpaper=bing_wallpaper_url[now_time % 3])
+    else:
+        data = do_query_ip_hostname(hostname)
+        High_Preci_Coordinates = "-" if data['High']['confidence'] == 2333 else "%.6f, %.6f (confidence: %.2f)" % \
+                                         (data['High']['latitude'],data['High']['longitude'],data['High']['confidence'])
+        data['High_Preci_Coordinates'] = High_Preci_Coordinates
         return  'IP:      {}\n'\
                 'ASN:     {}\n'\
                 'ISP:     {}\n'\
@@ -276,8 +288,6 @@ def query_ip_hostname(hostname, plaintext=True):
                     data['High']['position'],
                     data['High_Preci_Coordinates']
                     )
-    else:
-        return render_template('index.html', wallpaper=bing_wallpaper_url[now_time % 3])
 
 
 def check_req_freq_ok(ip):
@@ -320,9 +330,9 @@ def route_ip_hostname(args=None):
     else:
         hostname = args
 
-    ua = str(request.user_agent).lower();
-    plaintext = 'curl' in ua or 'wget' in ua or request.path.startswith('/ip/');
-    return query_ip_hostname(hostname, plaintext)
+    ua = str(request.user_agent).lower()
+    browser = not ('curl' in ua or 'wget' in ua or request.path.startswith('/ip/'))
+    return query_ip_hostname(hostname, browser)
 
 
 # params: /wifi/essid1,rssi1|essid2,rssi2|....
