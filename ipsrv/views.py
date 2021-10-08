@@ -70,9 +70,9 @@ def get_wifi_cell_location(data, is_wifi, is_cell):
 
     api = ''
     if is_wifi:
-        api = amap_wifi_loc_api.format(API_KEY_AMAP, '|'.join(data))
+        api = amap_wifi_loc_api.format(API_KEY_AMAP_IoT, '|'.join(data))
     elif is_cell:
-        api = amap_cell_loc_api.format(API_KEY_AMAP, data[0])
+        api = amap_cell_loc_api.format(API_KEY_AMAP_IoT, data[0])
         if len(data) > 1:
             api += '&nearbts=' + '|'.join(data[1:])
     else:
@@ -103,11 +103,11 @@ def get_wifi_cell_location(data, is_wifi, is_cell):
                     longitude = result['location'].split(',')[0],
                     radius    = result['radius'])
 
-def get_longitude_latitude(ip):
+def get_ip_location(ip):
     global requests_session
     global amap_ip_loc_api
     try:
-        resp = requests_session.get(amap_ip_loc_api.format(API_KEY_AMAP, ip), timeout=3)
+        resp = requests_session.get(amap_ip_loc_api.format(API_KEY_AMAP_IP, ip), timeout=3)
     except requests.exceptions.Timeout as _:
         return -1, "Upstream API request timeout, url: [%s]" % amap_ip_loc_api.split('?')[0]
     except Exception as e:
@@ -128,7 +128,7 @@ def get_longitude_latitude(ip):
 def get_high_precision_location(ip):
     global requests_session
     global amap_location_api
-    ret = get_longitude_latitude(ip)
+    ret = get_ip_location(ip)
     if ret[0] == -1 or ret[0] == -2:
         return ret
     try:
