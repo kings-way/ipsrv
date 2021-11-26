@@ -113,7 +113,7 @@ hr.style-five {
 </style>
 
 	</head>
-	<body onload="ip_location_on_load()" background={{ wallpaper[0] }}>
+	<body background="">
 	<div class="rootdiv">
 		<!-- div for tab change button -->
 		<div class="buttons_div">
@@ -134,7 +134,7 @@ hr.style-five {
 
 		<!-- div for IP location -->
 		<div id="div_ip" class="maindiv">
-		<form onsubmit="ip_location_on_click(); return false">
+		<form onsubmit="get_ip_on_click(); return false">
 			<input type="text" id="text_data_ip" title="IP address or Domain name" required>
 			<input type="submit" value="Enter"/>
 		</form>
@@ -155,9 +155,9 @@ hr.style-five {
 		</table>
 		<hr class="style-five";>
 		<table class="table">
-			<tr><td>高精度 IP 地区</td><td name="ip_info">Loading...</td></tr>
-			<tr><td>高精度 IP 位置</td><td name="ip_info"></td></tr>
-			<tr><td>高精度 IP 坐标</td><td name="ip_info"></td></tr>
+			<tr><td>高精度 IP 地区</td><td name="ip_loc">Loading...</td></tr>
+			<tr><td>高精度 IP 位置</td><td name="ip_loc"></td></tr>
+			<tr><td>高精度 IP 坐标</td><td name="ip_loc"></td></tr>
 		</table>
 		</div>
 
@@ -229,8 +229,8 @@ hr.style-five {
 
 	</div>
 	</body>
-	<pre style="color:grey;position:absolute;bottom:0px; right:20px">{{ wallpaper[1] }}</pre>
-	<pre style="color:grey;position:absolute;bottom:0px; left:20px">
+	<pre style="color:grey;position:absolute;bottom:0px; right:20px" id="wallpaper_copyright">NULL</pre>
+	<pre style="color:grey;position:absolute;bottom:0px; left:20px"  id="maxmind_copyright">
 This product includes GeoLite data created by MaxMind, available from <a href="http://www.maxmind.com">http://www.maxmind.com</a></pre>
 
 <script src="static/webrtc_ip.js"></script>
@@ -258,43 +258,73 @@ This product includes GeoLite data created by MaxMind, available from <a href="h
 		}
 	}
 
-	function ip_location_on_click(){
-		ip_location(document.getElementById("text_data_ip").value);
+	function get_ip_on_click(){
+		ip = document.getElementById("text_data_ip").value;
+		get_ip_info(ip);
+		get_ip_loc(ip);
 	}
 
-	function ip_location_on_load(){
-		ip_location(window.location.pathname.substr(1));
+	function get_ip_on_load(){
+		ip = window.location.pathname.substring(1,);
+		get_ip_info(ip);
+		get_ip_loc(ip);
 	}
 
-	function ip_location(query_ip){
-		console.log("do ip location");
+	function get_ip_info(query_ip){
+		console.log("get_ip_info");
 		ip_info = document.getElementsByName("ip_info");
 
 		ip_info.forEach(function(element){
 			element.innerHTML = "";
 		});
 		ip_info[0].innerHTML = "Loading";
-		ip_info[6].innerHTML = "Loading";
-
 
 		var xhttp = new XMLHttpRequest();
 		xhttp.onreadystatechange = function() {
 			if (this.readyState == 4 && this.status == 200) {
 				lines = this.responseText.split("\n");
-				info_index = 0;
+				data_index = 0;
 				lines.forEach(function(line, index){
 					if (line != ""){
-						ip_info[info_index++].innerHTML = line.substr(line.indexOf(':')+1).trim();
+						ip_info[data_index++].innerHTML = line.substr(line.indexOf(':')+1).trim();
 					}
 				});
 			}
 			else if (this.readyState == 4){
 				ip_info[0].innerHTML = "request failed";
-				ip_info[6].innerHTML = "request failed";
 			}
 		};
 		query_ip = query_ip == "" ? "localhost" : query_ip;
-		xhttp.open("GET", "/ip/" + query_ip, true);
+		xhttp.open("GET", "/ip/info/" + query_ip, true);
+		xhttp.send();
+	}
+
+	function get_ip_loc(query_ip){
+		console.log("get_ip_loc");
+		ip_loc = document.getElementsByName("ip_loc");
+
+		ip_loc.forEach(function(element){
+			element.innerHTML = "";
+		});
+		ip_loc[0].innerHTML = "Loading";
+
+		var xhttp = new XMLHttpRequest();
+		xhttp.onreadystatechange = function() {
+			if (this.readyState == 4 && this.status == 200) {
+				lines = this.responseText.split("\n");
+				data_index = 0;
+				lines.forEach(function(line, index){
+					if (line != ""){
+						ip_loc[data_index++].innerHTML = line.substr(line.indexOf(':')+1).trim();
+					}
+				});
+			}
+			else if (this.readyState == 4){
+				ip_loc[0].innerHTML = "request failed";
+			}
+		};
+		query_ip = query_ip == "" ? "localhost" : query_ip;
+		xhttp.open("GET", "/ip/loc/" + query_ip, true);
 		xhttp.send();
 	}
 	function cell_location(){
@@ -413,22 +443,81 @@ This product includes GeoLite data created by MaxMind, available from <a href="h
 		element.parentElement.parentElement.removeChild(element.parentElement);
 	}
 
+	function jsonp(url, callback) {
+		var callbackName = 'jsonp_callback_' + Math.round(100000 * Math.random());
+		window[callbackName] = function(data) {
+			delete window[callbackName];
+			document.body.removeChild(script);
+			callback(data);
+		};
+		var script = document.createElement('script');
+		script.src = url + (url.indexOf('?') >= 0 ? '&' : '?') + 'callback=' + callbackName;
+		document.body.appendChild(script);
+	}
+
 	function loadDNS() {
+		var random_id = Math.floor(Math.random() * 0x10000000000);
+		var xhttp = new XMLHttpRequest();
+		xhttp.onreadystatechange = function() {
+			if (this.readyState == 4 && this.status == 200) {
+				document.getElementById("dns").innerHTML = "";
+				data = JSON.parse(this.responseText);
+				data.dnsServerInfoArray.forEach(function(value, index, array){
+					line = value.ipAddress;
+					document.getElementById("dns").innerHTML += "<a href=" + line.ipAddress+">"+line.ipAddress+"</a> ("+line.isp+")<br>"
+				});
+			}
+		};
+		xhttp.open("GET", "http://4." + random_id + ".dns.whatsmydnsserver.com/api", true);
+		xhttp.send();
+	}
+
+	function loadDNS2() {
+		var random_id = Math.floor(Math.random() * 0x10000000000);
+		var xhttp = new XMLHttpRequest();
+		var xhttp2 = new XMLHttpRequest();
+		xhttp2.onreadystatechange = function() {
+			if (this.readyState == 4 && this.status == 200) {
+				document.getElementById("dns").innerHTML = "";
+				data = JSON.parse(this.responseText);
+				console.log("DNS Servers: " + data.dns4);
+				for (var key in data.dns4){
+					line = data.dns4[key];
+					console.log("DNS Servers: " + line.ip + ", " + line.as_description);
+					document.getElementById("dns").innerHTML += "<a href=" + line.ip+">"+line.ip+"</a> ("+line.as_description.split('-')[1].trim()+")<br>"
+				}
+			}
+		}
+
+		xhttp.onreadystatechange = function() {
+			if (this.readyState == 4 && this.status == 200) {
+				xhttp2.open("GET", "https://iptools.top10vpn.com/dns/get/?id=" + random_id, true);
+				xhttp2.send();
+			}
+		};
+		xhttp.open("GET", "https://dns4-" + random_id + ".dnstest4.top10vpn.com", true);
+		xhttp.send();
+	}
+
+	function loadWallpaper() {
+		//document.body.background = 'https://bing.biturl.top/?resolution=1920&format=image&mkt=zh-CN&index='
+		//							+ Math.floor(Date.now() / 1000) % 3;
 		var xhttp = new XMLHttpRequest();
 		xhttp.onreadystatechange = function() {
 			if (this.readyState == 4 && this.status == 200) {
 				data = JSON.parse(this.responseText);
-				document.getElementById("dns").innerHTML = "";
-				data.dnsServerInfoArray.forEach(function(value, index, array){
-					line = value.ipAddress;
-					document.getElementById("dns").innerHTML += "<a href=" + line.ipAddress+">"+line.ipAddress+"</a> ("+line.isp+")<br>"
-				})
+				console.log("Wallpaper: " + this.responseText);
+				document.body.background = data.url;
+				document.getElementById('wallpaper_copyright').textContent = data.copyright;
 			}
 		};
-		xhttp.open("GET", "http://4." + Math.random() + ".dns.whatsmydnsserver.com/api", true);
+		xhttp.open("GET", "/api/wallpaper/" + Math.floor(Date.now()/1000) % 3 , true);
 		xhttp.send();
 	}
+
+	get_ip_on_load();
+	loadWallpaper();
+	loadDNS2();
 	Set_Local_IP(document.getElementById('localv4'), document.getElementById('localv6'));
-	loadDNS();
 </script>
 </html>
