@@ -15,14 +15,14 @@ from flask import abort
 from flask import request
 from flask import jsonify
 from flask import render_template
+from flask import send_from_directory
 from subprocess import Popen,PIPE
 import xml.etree.cElementTree as ET
 
 
 ASN_reader = None
 CITY_reader = None
-bing_wallpaper_updated_time = 0
-bing_wallpaper_url = [None, None, None]
+global_var_updated_time = 0
 
 visitors = {}   # {"ip":(timestamp, count)}
 requests_session = requests.session()
@@ -42,25 +42,15 @@ amap_wifi_loc_api = 'http://apilocate.amap.com/position?accesstype=1&key={}&macs
 
 
 def update_global_var(now_time):
-    global bing_wallpaper_updated_time
-    if (now_time -  bing_wallpaper_updated_time) > 7200:
-        bing_wallpaper_updated_time = now_time
+    global global_var_updated_time
+    if (now_time -  global_var_updated_time) > 7200:
+        global_var_updated_time = now_time
 
         # Update Geoip Reader
         global CITY_reader
         global ASN_reader
-        global bing_wallpaper_url
         CITY_reader = geoip2.database.Reader('/var/lib/GeoIP/GeoLite2-City.mmdb')
         ASN_reader = geoip2.database.Reader('/var/lib/GeoIP/GeoLite2-ASN.mmdb')
-
-        # Update Bing Wallpaper
-        bing_url = "https://cn.bing.com/HPImageArchive.aspx?idx=0&n=3"
-        resp = requests.get(bing_url)
-        if not resp.ok:
-            return
-        tree = ET.fromstring(resp.text.encode('utf8'))
-        for i in range(0,3):
-            bing_wallpaper_url[i] = ['http://cn.bing.com/' + tree[i][4].text + '_1920x1080.jpg', tree[i][5].text]
 
 
 def get_wifi_cell_location(data, is_wifi, is_cell):
@@ -151,16 +141,11 @@ def get_high_precision_location(ip):
                     confidence=ret[1][2])
 
 
-High_Precision_Empty    = dict(city='-', position='-', latitude=0, longitude=0, confidence=2333)
-High_Precision_Failure  = dict(city='failed', position='failed', latitude=0, longitude=0, confidence=2333)
-
-def do_query_ip_hostname(hostname, ipv6=False):
-    global High_Precision_Failure
-
-    # if there is more than two ':' in hostname, then this may be a valid ipv6 address already
+def resolve_hostname(hostname):
     IP = None
+    is_ipv6 = False
     if hostname.count(':') >1:
-        ipv6 = True
+        is_ipv6 = True
         IP = hostname
     else:
         try:
@@ -172,10 +157,15 @@ def do_query_ip_hostname(hostname, ipv6=False):
                 pass
         except Exception:
                 pass
+    return IP, is_ipv6
 
-        if IP is None:
-            return dict(IP=hostname + " (Can't resolve hostname)", ISP='', ASN='', City='',
-                        Country='', Location='', High=High_Precision_Failure )
+
+def do_query_ip_info(hostname):
+    # if there is more than two ':' in hostname, then this may be a valid ipv6 address already
+    IP, is_ipv6 = resolve_hostname(hostname)
+    if IP is None:
+        return dict(IP=hostname + " (Can't resolve hostname)", ISP='', ASN='', City='',
+                    Country='', Location='')
     try:
         ASN = ASN_reader.asn(IP)
         ISP = ASN.autonomous_system_organization
@@ -187,7 +177,7 @@ def do_query_ip_hostname(hostname, ipv6=False):
 
     try:
         City = CITY_reader.city(IP)
-        Location = '' if City.location.latitude is None else "%s, %s" % (City.location.latitude, City.location.longitude)
+        Location = '' if City.location.latitude is None else "%.6f, %.6f" % (City.location.longitude, City.location.latitude)
         Country = '' if City.country.iso_code is None else "%s | %s | %s" % \
                   (City.country.iso_code, City.country.names['en'], City.country.names['zh-CN'])
 
@@ -211,24 +201,30 @@ def do_query_ip_hostname(hostname, ipv6=False):
         # not found
         Location = City = Country = '-'
 
-    # High Precision Location
-    ret, high_precision_location = get_high_precision_location(IP)
-    if ret == -1:
-        print(high_precision_location)
-        high_precision_location = High_Precision_Failure
-    elif ret == -2:
-        print(high_precision_location)
-        high_precision_location = High_Precision_Empty
-#    if not ipv6:
-#        ret, high_precision_location = get_high_precision_location(IP)
-#        if ret == -1:
-#            high_precision_location = High_Precision_Failure
-#    else:
-#        high_precision_location = High_Precision_Failure
-
-
     IP = IP if IP == hostname else hostname + ' (' + IP + ')'
-    return dict(IP=IP , ISP=ISP, ASN=ASN, City=City, Country=Country, Location=Location, High=high_precision_location)
+    return dict(IP=IP , ISP=ISP, ASN=ASN, City=City, Country=Country, Location=Location)
+
+
+High_Precision_Empty    = dict(city='-', position='-', latitude=0, longitude=0, confidence=2333)
+High_Precision_Failure  = dict(city='failed', position='failed', latitude=0, longitude=0, confidence=2333)
+
+def do_query_ip_location(hostname):
+    global High_Precision_Empty
+    global High_Precision_Failure
+
+    IP, is_ipv6 = resolve_hostname(hostname)
+    if IP is None or IP == '127.0.0.1':
+        high_precision_location = High_Precision_Empty
+    else:
+        ret, high_precision_location = get_high_precision_location(IP)
+        if ret == -1:
+            print(high_precision_location)
+            high_precision_location = High_Precision_Failure
+        elif ret == -2:
+            print(high_precision_location)
+            high_precision_location = High_Precision_Empty
+
+    return dict(High=high_precision_location)
 
 # Do some security check work, like check the ip format
 def is_secure(string):
@@ -258,36 +254,31 @@ def query_wifi_cell_location(data, ua, is_wifi=False, is_cell=False):
             .format(city, location, coordinates, radius)
 
 
-def query_ip_hostname(hostname,  browser=False):
-    now_time = int(time.time())
-    update_global_var(now_time)
+def query_ip_hostname(hostname, get_ip=True, get_loc=True):
+    update_global_var(int(time.time()))
 
-    if browser:
-        return render_template('index.html', wallpaper=bing_wallpaper_url[now_time % 3])
-    else:
-        data = do_query_ip_hostname(hostname)
+    result = ''
+    if get_ip:
+        data = do_query_ip_info(hostname)
+        result += \
+            'IP:      {}\n'\
+            'ASN:     {}\n'\
+            'ISP:     {}\n'\
+            'City:    {}\n'\
+            'Country: {}\n'\
+            'Geo Loc: {}\n\n'.format(data['IP'], data['ASN'], data['ISP'], data['City'], data['Country'], data['Location'])
+
+
+    if get_loc:
+        data  = do_query_ip_location(hostname)
         High_Preci_Coordinates = "-" if data['High']['confidence'] == 2333 else "%.6f, %.6f (confidence: %.2f)" % \
-                                         (data['High']['latitude'],data['High']['longitude'],data['High']['confidence'])
-        data['High_Preci_Coordinates'] = High_Preci_Coordinates
-        return  'IP:      {}\n'\
-                'ASN:     {}\n'\
-                'ISP:     {}\n'\
-                'City:    {}\n'\
-                'Country: {}\n'\
-                'Geo Loc: {}\n\n'\
-                'IP City:        {}\n'\
-                'IP Location:    {}\n'\
-                'IP Coordinates: {}\n'.format(
-                    data['IP'],
-                    data['ASN'],
-                    data['ISP'],
-                    data['City'],
-                    data['Country'],
-                    data['Location'],
-                    data['High']['city'],
-                    data['High']['position'],
-                    data['High_Preci_Coordinates']
-                    )
+                                        (data['High']['longitude'],data['High']['latitude'],data['High']['confidence'])
+        result += \
+            'IP City:        {}\n'\
+            'IP Location:    {}\n'\
+            'IP Coordinates: {}\n'.format(data['High']['city'], data['High']['position'], High_Preci_Coordinates)
+
+    return result
 
 
 def check_req_freq_ok(ip):
@@ -322,20 +313,37 @@ def favicon():
 # params can be DomainName, IP, IPv6
 @app.route('/', methods=['GET'])
 @app.route('/<args>', methods=['GET'])
-@app.route('/ip/<args>', methods=['GET'])
 def route_ip_hostname(args=None):
-    if args is None or args == 'localhost':
+    if args is None:
         headers_list = request.headers.getlist("X-Forwarded-For")
         hostname = headers_list[0].split(',')[0] if headers_list else request.remote_addr
     else:
         hostname = args
 
     ua = str(request.user_agent).lower()
-    browser = not ('curl' in ua or 'wget' in ua or request.path.startswith('/ip/'))
-    return query_ip_hostname(hostname, browser)
+    if 'curl' in ua or 'wget' in ua:
+        return query_ip_hostname(hostname)
+    else:
+        #return render_template('index.html')
+        return send_from_directory('templates', 'index.html')
 
 
-# params: /wifi/essid1,rssi1|essid2,rssi2|....
+# API for web, split Maxmind IP Info and High Precision Location into two apis
+@app.route('/ip/info/<args>', methods=['GET'])
+@app.route('/ip/loc/<args>', methods=['GET'])
+def route_ip_api_info(args):
+    if args == 'localhost':
+        headers_list = request.headers.getlist("X-Forwarded-For")
+        hostname = headers_list[0].split(',')[0] if headers_list else request.remote_addr
+    else:
+        hostname = args
+    if request.path.startswith('/ip/info'):
+        return query_ip_hostname(args, get_ip=True, get_loc=False)
+    elif request.path.startswith('/ip/loc'):
+        return query_ip_hostname(args, get_ip=False, get_loc=True)
+
+
+#params: /wifi/essid1,rssi1|essid2,rssi2|....
 @app.route('/wifi/<args>', methods=['GET'])
 def route_wifi_location(args):
     # need to take care of Cloudflare Proxy-ed Request
@@ -354,6 +362,7 @@ def route_wifi_location(args):
         essids.append("ff:ff:ff:ff:ff:ff,-60,NoSSID")
 
     return query_wifi_cell_location(essids, request.user_agent, is_wifi=True)
+
 
 # params: /cell/mcc,mnc,lac,cellid,rssi|mcc,mnc,lac,cellid,rssi
 # the first is connected cell station, the others are nearby stations
