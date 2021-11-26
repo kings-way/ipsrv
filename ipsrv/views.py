@@ -349,13 +349,13 @@ def route_ip_api_info(args):
     else:
         hostname = args
     if request.path.startswith('/ip/info'):
-        return query_ip_hostname(args, get_ip=True, get_loc=False)
+        return query_ip_hostname(hostname, get_ip=True, get_loc=False)
     elif request.path.startswith('/ip/loc'):
         # need to take care of Cloudflare Proxy-ed Request
         if not check_req_freq_ok(request.remote_addr):
             abort(429, "request too fast, ip: %s" % request.remote_addr)
         else:
-            return query_ip_hostname(args, get_ip=False, get_loc=True)
+            return query_ip_hostname(hostname, get_ip=False, get_loc=True)
 
 
 #params: /wifi/essid1,rssi1|essid2,rssi2|....
