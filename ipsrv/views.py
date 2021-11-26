@@ -14,15 +14,14 @@ from ipsrv.conf.conf import *
 from flask import abort
 from flask import request
 from flask import jsonify
-from flask import render_template
 from flask import send_from_directory
 from subprocess import Popen,PIPE
-import xml.etree.cElementTree as ET
 
 
 ASN_reader = None
 CITY_reader = None
 global_var_updated_time = 0
+bing_wallpaper_url = [None, None, None]
 
 visitors = {}   # {"ip":(timestamp, count)}
 requests_session = requests.session()
@@ -40,9 +39,13 @@ amap_cell_loc_api = 'http://apilocate.amap.com/position?accesstype=0&cdma=0&key=
 #           example: b4:5d:50:01:ff:07,-60,SSID1|68:d7:9a:3e:7d:12,-60,SSID2
 amap_wifi_loc_api = 'http://apilocate.amap.com/position?accesstype=1&key={}&macs={}'
 
+bing_wallpaper_api = "https://cn.bing.com/HPImageArchive.aspx?format=js&idx=0&n=3"
 
-def update_global_var(now_time):
+
+def update_global_var():
+    global bing_wallpaper_url
     global global_var_updated_time
+    now_time = int(time.time())
     if (now_time -  global_var_updated_time) > 7200:
         global_var_updated_time = now_time
 
@@ -51,6 +54,15 @@ def update_global_var(now_time):
         global ASN_reader
         CITY_reader = geoip2.database.Reader('/var/lib/GeoIP/GeoLite2-City.mmdb')
         ASN_reader = geoip2.database.Reader('/var/lib/GeoIP/GeoLite2-ASN.mmdb')
+
+        # Update bing wallpaper
+        resp = requests.get(bing_wallpaper_api)
+        if not resp.ok:
+            return
+        else:
+            bing_wallpaper_url.clear()
+            for line in resp.json()['images']:
+                bing_wallpaper_url.append(dict(url='http://cn.bing.com/' + line['url'], copyright=line['copyright']))
 
 
 def get_wifi_cell_location(data, is_wifi, is_cell):
@@ -255,7 +267,7 @@ def query_wifi_cell_location(data, ua, is_wifi=False, is_cell=False):
 
 
 def query_ip_hostname(hostname, get_ip=True, get_loc=True):
-    update_global_var(int(time.time()))
+    update_global_var()
 
     result = ''
     if get_ip:
@@ -324,8 +336,7 @@ def route_ip_hostname(args=None):
     if 'curl' in ua or 'wget' in ua:
         return query_ip_hostname(hostname)
     else:
-        #return render_template('index.html')
-        return send_from_directory('templates', 'index.html')
+        return send_from_directory('static', 'index.html')
 
 
 # API for web, split Maxmind IP Info and High Precision Location into two apis
@@ -340,7 +351,11 @@ def route_ip_api_info(args):
     if request.path.startswith('/ip/info'):
         return query_ip_hostname(args, get_ip=True, get_loc=False)
     elif request.path.startswith('/ip/loc'):
-        return query_ip_hostname(args, get_ip=False, get_loc=True)
+        # need to take care of Cloudflare Proxy-ed Request
+        if not check_req_freq_ok(request.remote_addr):
+            abort(429, "request too fast, ip: %s" % request.remote_addr)
+        else:
+            return query_ip_hostname(args, get_ip=False, get_loc=True)
 
 
 #params: /wifi/essid1,rssi1|essid2,rssi2|....
@@ -382,3 +397,7 @@ def route_cell_location(args):
         return query_wifi_cell_location(bts, request.user_agent, is_cell=True)
     else:
         abort(500, 'wrong params')
+
+@app.route('/api/wallpaper/<int:args>', methods=['GET'])
+def route_bing_wallpaper(args):
+    return jsonify(bing_wallpaper_url[args % 3])
