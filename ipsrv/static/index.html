@@ -484,7 +484,10 @@ This product includes GeoLite data created by MaxMind, available from <a href="h
 				for (var key in data.dns4){
 					line = data.dns4[key];
 					console.log("DNS Servers: " + line.ip + ", " + line.as_description);
-					document.getElementById("dns").innerHTML += "<a href=" + line.ip+">"+line.ip+"</a> ("+line.as_description.split('-')[1].trim()+")<br>"
+					document.getElementById("dns").innerHTML
+							+= "<a href=" + line.ip + ">" + line.ip + "</a>"
+							+ " (" + line.as_description.split(' - ')[1].trim() + ")"
+							+ "<br>";
 				}
 			}
 		}
