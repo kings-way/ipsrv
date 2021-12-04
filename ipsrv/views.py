@@ -64,6 +64,8 @@ def update_global_var():
             for line in resp.json()['images']:
                 bing_wallpaper_url.append(dict(url='http://cn.bing.com/' + line['url'], copyright=line['copyright']))
 
+# call update_global_var() once on start
+update_global_var()
 
 def get_wifi_cell_location(data, is_wifi, is_cell):
     global requests_session
@@ -78,7 +80,7 @@ def get_wifi_cell_location(data, is_wifi, is_cell):
         if len(data) > 1:
             api += '&nearbts=' + '|'.join(data[1:])
     else:
-        return -1, "no wifi and no cell, what's your problem?"
+        return -1, "not querying wifi or cell, what's your problem?"
     try:
         resp = requests_session.get(api, timeout=3)
     except requests.exceptions.Timeout as _:
@@ -243,7 +245,7 @@ def is_secure(string):
 	return True
 
 def query_wifi_cell_location(data, ua, is_wifi=False, is_cell=False):
-    ua = str(ua).lower()
+    #ua = str(ua).lower()
     ret, data = get_wifi_cell_location(data, is_wifi, is_cell)
     if ret == -1:
         print(data)
@@ -257,7 +259,7 @@ def query_wifi_cell_location(data, ua, is_wifi=False, is_cell=False):
         city = data['city']
         location = data['location']
         radius = data['radius'] + ' (m)'
-        coordinates = data['latitude'] + ', ' + data['longitude']
+        coordinates = data['longitude'] + ', ' + data['latitude']
 
     return  'City:        {}\n'\
             'Location:    {}\n'\
