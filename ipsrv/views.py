@@ -94,8 +94,11 @@ def get_wifi_cell_location(data, is_wifi, is_cell):
 
     data = resp.json()
     if data['status'] != '1' :
-        return -1, "Upstream API result error: errcode: %d, errmsg: %s, url: %s" % \
+        try:
+            return -1, "Upstream API result error: errcode: %d, errmsg: %s, url: %s" % \
                     (data['errcode'], data['errmsg'], resp.url.split('?')[0])
+        except KeyError as e:
+            return -1, "Upstream API result error: %s" % data['info']
 
     if data['result']['type'] == '0':
         return -2, "Upsteam API returns empty result"
@@ -249,7 +252,10 @@ def query_wifi_cell_location(data, ua, is_wifi=False, is_cell=False):
     ret, data = get_wifi_cell_location(data, is_wifi, is_cell)
     if ret == -1:
         print(data)
-        return "error"
+        city = 'error'
+        location = '-'
+        radius = '-'
+        coordinates = '-'
     elif ret == -2:
         city = '-'
         location = '-'
