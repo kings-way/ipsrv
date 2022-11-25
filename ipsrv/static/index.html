@@ -476,11 +476,13 @@ This product includes GeoLite data created by MaxMind, available from <a href="h
 		var random_id = Math.floor(Math.random() * 0x10000000000);
 		var xhttp = new XMLHttpRequest();
 		var xhttp2 = new XMLHttpRequest();
+		var div_dns = document.getElementById("dns")
 		xhttp2.onreadystatechange = function() {
 			if (this.readyState == 4 && this.status == 200) {
-				document.getElementById("dns").innerHTML = "";
+				console.log("loadDNS2: " + this.responseText);
+				if (div_dns.innerHTML == "Loading...")
+					div_dns.innerHTML = "";
 				data = JSON.parse(this.responseText);
-				console.log("loadDNS2 Response: " + this.responseText);
 				for (var key in data.dns4){
 					line = data.dns4[key];
 					if ( ! line.announced )
@@ -491,10 +493,14 @@ This product includes GeoLite data created by MaxMind, available from <a href="h
 						as_info = as_info[0].trim();
 					else
 						as_info = as_info[0].split(' ')[0].trim();	// special case for "ERX-CERNET-BKB China Education and Research Network Center"
-					document.getElementById("dns").innerHTML
+
+					if ( dns_servers.indexOf(line.ip) == -1 ) {
+						dns_servers.push(line.ip);
+						div_dns.innerHTML
 							+= "<a href=" + line.ip + ">" + line.ip + "</a>"
 							+ " (" + as_info + ")"
 							+ "<br>";
+					}
 				}
 			}
 		}
@@ -506,6 +512,29 @@ This product includes GeoLite data created by MaxMind, available from <a href="h
 			}
 		};
 		xhttp.open("GET", "https://dns4-" + random_id + ".dnstest4.top10vpn.com", true);
+		xhttp.send();
+	}
+
+	function loadDNS3() {
+		var xhttp = new XMLHttpRequest();
+		var div_dns = document.getElementById("dns")
+		xhttp.onreadystatechange = function() {
+			if (this.readyState == 4 && this.status == 200) {
+				console.log("loadDNS3: " + this.responseText);
+				if (div_dns.innerHTML == "Loading...")
+					div_dns.innerHTML = "";
+				data = JSON.parse(this.responseText);
+
+				if ( dns_servers.indexOf(data.dns.ip) == -1 ) {
+					dns_servers.push(data.dns.ip);
+					div_dns.innerHTML
+						+= "<a href=" + data.dns.ip + ">" + data.dns.ip + "</a>"
+						+ " (" + data.dns.geo.split(' - ')[1] + ")"
+						+ "<br>";
+				}
+			}
+		};
+		xhttp.open("GET", "http://edns.ip-api.com/json", true);
 		xhttp.send();
 	}
 
@@ -527,7 +556,10 @@ This product includes GeoLite data created by MaxMind, available from <a href="h
 
 	get_ip_on_load();
 	loadWallpaper();
-	loadDNS2();
 	Set_Local_IP(document.getElementById('localv4'), document.getElementById('localv6'));
+
+	var dns_servers = [];
+	loadDNS2();
+	loadDNS3();
 </script>
 </html>
