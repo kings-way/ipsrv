@@ -480,13 +480,20 @@ This product includes GeoLite data created by MaxMind, available from <a href="h
 			if (this.readyState == 4 && this.status == 200) {
 				document.getElementById("dns").innerHTML = "";
 				data = JSON.parse(this.responseText);
-				console.log("DNS Servers: " + data.dns4);
+				console.log("loadDNS2 Response: " + this.responseText);
 				for (var key in data.dns4){
 					line = data.dns4[key];
+					if ( ! line.announced )
+						line.as_description = "";
 					console.log("DNS Servers: " + line.ip + ", " + line.as_description);
+					as_info = line.as_description.split(' - ');
+					if ( as_info.length > 1 )
+						as_info = as_info[0].trim();
+					else
+						as_info = as_info[0].split(' ')[0].trim();	// special case for "ERX-CERNET-BKB China Education and Research Network Center"
 					document.getElementById("dns").innerHTML
 							+= "<a href=" + line.ip + ">" + line.ip + "</a>"
-							+ " (" + line.as_description.split(' - ')[1].trim() + ")"
+							+ " (" + as_info + ")"
 							+ "<br>";
 				}
 			}
