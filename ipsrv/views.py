@@ -27,7 +27,7 @@ visitors = {}   # {"ip":(timestamp, count)}
 requests_session = requests.session()
 
 amap_ip_loc_api   = 'http://restapi.amap.com/v3/ip?key={}&ip={}'    # IP location V3, only to city range
-amap_ip_loc_api   = 'http://restapi.amap.com/v4/ip?key={}&ip={}'    # IP location V4, seems disabled (no keep-alive)
+#amap_ip_loc_api   = 'http://restapi.amap.com/v4/ip?key={}&ip={}'    # IP location V4, seems disabled (no keep-alive)
 amap_ip_loc_web   = 'https://webapi.amap.com/maps/ipLocation?key={}&callback=jsonp_1234' # IP location for js sdk, seems no help
 amap_location_api = 'http://ditu.amap.com/service/regeo?latitude={}&longitude={}'
 
@@ -97,7 +97,7 @@ def get_wifi_cell_location(data, is_wifi, is_cell):
     data = resp.json()
     if data['status'] != '1' :
         try:
-            return -1, "Upstream API result error: errcode: %d, errmsg: %s, url: %s" % \
+            return -1, "Upstream API result error: code: %d, msg: %s, url: %s" % \
                     (data['errcode'], data['errmsg'], resp.url.split('?')[0])
         except KeyError as e:
             return -1, "Upstream API result error: %s" % data['info']
@@ -127,11 +127,23 @@ def get_ip_location(ip):
                     (resp.status_code, resp.url.split('?')[0])
 
     data = resp.json()
-    if data['errcode'] != 0 :
-        return -2, "Upstream API result error: errcode: %d, errmsg: %s, url: %s" % \
-                    (data['errcode'], data['errmsg'], resp.url.split('?')[0])
 
-    return 0, (data['data']['lat'], data['data']['lng'], data['data']['confidence'])
+    # for amap ip api v4, return the coordinates
+    if 'errcode' in data.keys():
+        if data['errcode'] != 0:
+            return -2, "Upstream API result error: code: %d, msg: %s, url: %s" % \
+                    (data['errcode'], data['errmsg'], resp.url.split('?')[0])
+        return 0, (data['data']['lat'], data['data']['lng'], data['data']['confidence'])
+
+    # for amap ip api v3, return the city directly
+    if 'status' in data.keys():
+        if data['status'] == "0":
+            return -2, "Upstream API result error: code: %s, msg: %s, url: %s" % \
+                    (data['infocode'], data['info'], resp.url.split('?')[0])
+        if len(data['province']) > 0 and len(data['city']) > 0:
+            return -3, "{}, {}".format(data['province'], data['city'])
+        else:
+            return -3, "-"
 
 
 def get_high_precision_location(ip):
@@ -140,6 +152,10 @@ def get_high_precision_location(ip):
     ret = get_ip_location(ip)
     if ret[0] == -1 or ret[0] == -2:
         return ret
+    # for amap ip api v3
+    if ret[0] == -3:
+        return 0, dict(city=ret[1], position='-', latitude=0, longitude=0, confidence=2333)
+
     try:
         resp = requests_session.get(amap_location_api.format(ret[1][0], ret[1][1]), timeout=3)
     except requests.exceptions.Timeout as _:
