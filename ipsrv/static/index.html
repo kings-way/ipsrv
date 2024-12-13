@@ -53,6 +53,7 @@ body {
 
 .maindiv {
 	float: center;
+	align-content:center;
 }
 
 .buttons_div {
@@ -158,6 +159,10 @@ hr.style-five {
 			<tr><td>高精度 IP 地区</td><td name="ip_loc">Loading...</td></tr>
 			<tr><td>高精度 IP 位置</td><td name="ip_loc"></td></tr>
 			<tr><td>高精度 IP 坐标</td><td name="ip_loc"></td></tr>
+		</table>
+		<hr class="style-five";>
+		<table class="table">
+			<tr><td>User-Agent</td><td id="ua"></td></tr>
 		</table>
 		</div>
 
@@ -554,6 +559,8 @@ This product includes GeoLite data created by MaxMind, available from <a href="h
 		xhttp.send();
 	}
 
+	// set User-Agent
+	document.getElementById("ua").innerText = navigator.userAgent;
 	get_ip_on_load();
 	loadWallpaper();
 	Set_Local_IP(document.getElementById('localv4'), document.getElementById('localv6'));
