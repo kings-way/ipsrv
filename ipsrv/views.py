@@ -28,6 +28,7 @@ requests_session = requests.session()
 
 amap_ip_loc_api   = 'http://restapi.amap.com/v3/ip?key={}&ip={}'    # IP location V3, only to city range
 #amap_ip_loc_api   = 'http://restapi.amap.com/v4/ip?key={}&ip={}'    # IP location V4, seems disabled (no keep-alive)
+#amap_ip_loc_api   = 'https://restapi.amap.com/v5/ip/location?key={}&ip={}&type=4'    # IP location V5, amap + ipplus360
 amap_ip_loc_web   = 'https://webapi.amap.com/maps/ipLocation?key={}&callback=jsonp_1234' # IP location for js sdk, seems no help
 amap_location_api = 'http://ditu.amap.com/service/regeo?latitude={}&longitude={}'
 
