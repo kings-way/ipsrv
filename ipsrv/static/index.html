@@ -207,10 +207,10 @@ hr.style-five {
 						   placeholder="MNC (00)" pattern="[0-9]{1,3}" title="Mobile Network Code">
 
 					<input type="text" name="text_lac" size="6" maxlength="8" required
-						   placeholder="LAC" pattern="[0-9]{1,8}" title="Location Area Code">
+						   placeholder="TAC/LAC" pattern="[0-9]{1,8}" title="Location Area Code">
 
-					<input type="text" name="text_cid" size="8" maxlength="10" required
-						   placeholder="CID" pattern="[0-9]{1,10}" title="Cell ID (BTS)">
+					<input type="text" name="text_cid" size="8" maxlength="12" required
+						   placeholder="ECI/CID" pattern="[0-9]{1,12}" title="Cell ID">
 
 					<input type="number" name="text_cell_rssi" size="3" max="0" min="-200" placeholder="rssi"
 									     title="signal strength, like: -90 dBm">
