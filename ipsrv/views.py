@@ -26,6 +26,8 @@ bing_wallpaper_url = [None, None, None]
 visitors = {}   # {"ip":(timestamp, count)}
 requests_session = requests.session()
 
+meituan_ip_loc_api = 'https://apimobile.meituan.com/locate/v2/ip/loc?rgeo=true&ip={}'
+
 amap_ip_loc_api   = 'http://restapi.amap.com/v3/ip?key={}&ip={}'    # IP location V3, only to city range
 #amap_ip_loc_api   = 'http://restapi.amap.com/v4/ip?key={}&ip={}'    # IP location V4, seems disabled (no keep-alive)
 #amap_ip_loc_api   = 'https://restapi.amap.com/v5/ip/location?key={}&ip={}&type=4'    # IP location V5, amap + ipplus360
@@ -116,12 +118,13 @@ def get_wifi_cell_location(data, is_wifi, is_cell):
 def get_ip_location(ip):
     global requests_session
     global amap_ip_loc_api
+    api = amap_ip_loc_api
     try:
-        resp = requests_session.get(amap_ip_loc_api.format(API_KEY_AMAP_IP, ip), timeout=3)
+        resp = requests_session.get(api.format(API_KEY_AMAP_IP, ip), timeout=3)
     except requests.exceptions.Timeout as _:
-        return -1, "Upstream API request timeout, url: [%s]" % amap_ip_loc_api.split('?')[0]
+        return -1, "Upstream API request timeout, url: [%s]" % api.split('?')[0]
     except Exception as e:
-        return -1, "Upstream API request failed, url: [%s]\n[%s]" % (amap_ip_loc_api.split('?')[0], str(e))
+        return -1, "Upstream API request failed, url: [%s]\n[%s]" % (api.split('?')[0], str(e))
 
     if not resp.ok:
         return -1, "Upstream API http status error: %d, url: [%s] " % \
@@ -147,10 +150,32 @@ def get_ip_location(ip):
             return -3, "-"
 
 
+def get_ip_location_meituan(ip):
+    global requests_session
+    global meituan_ip_loc_api
+    api = meituan_ip_loc_api
+    try:
+        resp = requests_session.get(api.format(ip), timeout=3)
+    except requests.exceptions.Timeout as _:
+        return -1, "Upstream API request timeout, url: [%s]" % api.split('?')[0]
+    except Exception as e:
+        return -1, "Upstream API request failed, url: [%s]\n[%s]" % (api.split('?')[0], str(e))
+
+    if not resp.ok:
+        return -1, "Upstream API http status error: %d, url: [%s] " % \
+                    (resp.status_code, resp.url.split('?')[0])
+    data = resp.json()
+    if 'error' in data:
+        return -2, "Upstream API result error: code: %d, msg: %s, url: %s" % \
+                (data['error']['code'], data['error']['message'], resp.url.split('?')[0])
+    return 0, (data['data']['lat'], data['data']['lng'], 1.0)
+
+
 def get_high_precision_location(ip):
     global requests_session
     global amap_location_api
-    ret = get_ip_location(ip)
+    #ret = get_ip_location(ip)
+    ret = get_ip_location_meituan(ip)
     if ret[0] == -1 or ret[0] == -2:
         return ret
     # for amap ip api v3
